@@ -525,6 +525,16 @@ tr:last-child td{border-bottom:none}
         <select id="bud-period" onchange="renderBud()" style="flex:2;font-size:12px;padding:7px 10px"><option value="all">ทุกงวด</option></select>
       </div>
 
+      <!-- ══ สรุปงวด Financial Statement (บนสุด) ══ -->
+      <div class="summary-card" id="bud-summary-card">
+        <div class="summary-header">
+          <div class="summary-title">📊 สรุปการเงิน</div>
+          <div class="summary-period" id="bud-summary-period">—</div>
+        </div>
+        <div id="bud-summary-rows"></div>
+      </div>
+      <button class="btn bp" style="width:100%;justify-content:center;margin-bottom:12px" onclick="exportPDF()">📄 Export PDF</button>
+
       <!-- ══ Overview Flow (รายรับ→ออม→ลงทุน→ใช้จ่าย) ══ -->
       <div class="bud-overview" id="bud-overview">
         <div class="bud-ov-title">🎯 ภาพรวมงวดนี้
@@ -545,16 +555,6 @@ tr:last-child td{border-bottom:none}
         <div class="chart-filter" id="cum-filter"></div>
         <div class="cwrap" style="height:220px"><canvas id="c-cum"></canvas></div>
       </div>
-
-      <!-- ══ สรุปงวด Financial Statement ══ -->
-      <div class="summary-card" id="bud-summary-card">
-        <div class="summary-header">
-          <div class="summary-title">📊 สรุปการเงิน</div>
-          <div class="summary-period" id="bud-summary-period">—</div>
-        </div>
-        <div id="bud-summary-rows"></div>
-      </div>
-      <button class="btn bp" style="width:100%;justify-content:center;margin-bottom:12px" onclick="exportPDF()">📄 Export PDF</button>
     </div>
 
     <!-- ═══ DASHBOARD ══════════════════════════ -->
@@ -1095,13 +1095,15 @@ function populateBudYearSel(){
   years.forEach(y=>{const o=document.createElement('option');o.value=y;o.textContent='ปี '+y;s.appendChild(o);});
   if(cur&&years.includes(cur))s.value=cur;
 }
-function populateBudPeriodSel(year){
+function populateBudPeriodSel(year, forceLatest=false){
   const s=document.getElementById('bud-period');if(!s)return;
   const periods=DB.periods.filter(p=>year==='all'||p.year===year).sort((a,b)=>b.id.localeCompare(a.id));
   const cur=s.value;s.innerHTML='<option value="all">ทุกงวด</option>';
   periods.forEach(p=>{const o=document.createElement('option');o.value=p.id;
     o.textContent=`งวด ${p.id} (${fmtD(p.start)}—${fmtD(p.end)})`;s.appendChild(o);});
-  if(cur&&periods.find(p=>p.id===cur))s.value=cur;
+  if(forceLatest&&periods.length){s.value=periods[0].id;}
+  else if(cur&&periods.find(p=>p.id===cur)){s.value=cur;}
+  else if(periods.length){s.value=periods[0].id;}
 }
 window.onBudPeriodChange=()=>{const y=document.getElementById('bud-year')?.value||'all';populateBudPeriodSel(y);renderBud();};
 function populateCatSel(selId,forType='expense'){
@@ -1207,7 +1209,17 @@ function renderPage(p){
   populateSels();
   if(p==='add')      renderAddPage();
   if(p==='records')  renderRecords();
-  if(p==='budget')   renderBud();
+  if(p==='budget'){
+    // auto-select ปีล่าสุด + งวดล่าสุด ตอนเข้าหน้างบ
+    const budYear=document.getElementById('bud-year');
+    if(budYear&&(budYear.value==='all'||!budYear.value)){
+      const years=[...new Set(DB.periods.map(p=>p.year))].sort().reverse();
+      const nowY=today().substring(0,4);
+      budYear.value=years.length?years[0]:nowY;
+    }
+    populateBudPeriodSel(document.getElementById('bud-year')?.value||'all',true);
+    renderBud();
+  }
   if(p==='dashboard')renderDash();
   if(p==='balance')  renderBalance();
 }
@@ -1755,10 +1767,10 @@ function renderBud(){
           ${gBudget>0?`<span style="color:${gCol}">${fmtM(gTotal)} / ${fmtM(gBudget)} ${gPct}%</span>`
             :gTotal>0?`<span class="tm">${fmtM(gTotal)}</span>`:'<span class="tm">—</span>'}
         </span>
-        <span class="bud-group-arrow open" id="barr-${gi}">▾</span>
+        <span class="bud-group-arrow" id="barr-${gi}">▾</span>
       </div>
       ${gBudget>0?`<div class="bud-group-bar"><div class="pbg"><div class="pfill" style="width:${gPct}%;background:${gCol}"></div></div></div>`:''}
-      <div class="bud-group-body open" id="bg-${gi}">
+      <div class="bud-group-body" id="bg-${gi}">
         ${cats.map(c=>{
           const bgt=DB.budgets[c.id]||0,sp=cT[c.id]||0,isEdit=budEditId===c.id;
           if(isEdit)return `<div class="bud-row">
