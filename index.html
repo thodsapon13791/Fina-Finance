@@ -525,24 +525,6 @@ tr:last-child td{border-bottom:none}
         <select id="bud-period" onchange="renderBud()" style="flex:2;font-size:12px;padding:7px 10px"><option value="all">ทุกงวด</option></select>
       </div>
 
-      <!-- ══ สรุปงวด Financial Statement (บนสุด) ══ -->
-      <div class="summary-card" id="bud-summary-card">
-        <div class="summary-header">
-          <div class="summary-title">📊 สรุปการเงิน</div>
-          <div class="summary-period" id="bud-summary-period">—</div>
-        </div>
-        <div id="bud-summary-rows"></div>
-      </div>
-      <button class="btn bp" style="width:100%;justify-content:center;margin-bottom:12px" onclick="exportPDF()">📄 Export PDF</button>
-
-      <!-- ══ Overview Flow (รายรับ→ออม→ลงทุน→ใช้จ่าย) ══ -->
-      <div class="bud-overview" id="bud-overview">
-        <div class="bud-ov-title">🎯 ภาพรวมงวดนี้
-          <button class="btn bo bs" onclick="openGoalModal()">✏️ ตั้งเป้า</button>
-        </div>
-        <div id="bud-flow-rows"></div>
-      </div>
-
       <!-- ══ งบรายหมวด collapsible ══ -->
       <div class="card">
         <div class="ctitle">สถานะงบรายหมวด <small id="bud-total-label"></small></div>
@@ -555,6 +537,16 @@ tr:last-child td{border-bottom:none}
         <div class="chart-filter" id="cum-filter"></div>
         <div class="cwrap" style="height:220px"><canvas id="c-cum"></canvas></div>
       </div>
+
+      <!-- ══ สรุปงวด Financial Statement (ล่างสุด) ══ -->
+      <div class="summary-card" id="bud-summary-card">
+        <div class="summary-header">
+          <div class="summary-title">📊 สรุปการเงิน</div>
+          <div class="summary-period" id="bud-summary-period">—</div>
+        </div>
+        <div id="bud-summary-rows"></div>
+      </div>
+      <button class="btn bp" style="width:100%;justify-content:center;margin-bottom:12px" onclick="exportPDF()">📄 Export PDF</button>
     </div>
 
     <!-- ═══ DASHBOARD ══════════════════════════ -->
@@ -1303,6 +1295,7 @@ function renderCatTree(){
     <div class="cat-tree-group">
       <div class="cat-tree-hdr">
         <span class="cat-tree-hdr-name">${g.name}</span>
+        <button class="btn bo bs bic" onclick="renameGroup('${g.id}')" title="แก้ชื่อกลุ่ม">✏️</button>
         <button class="btn bp bs bic" onclick="openAddCatInGroup('${g.id}')" title="เพิ่มหมวดในกลุ่มนี้">+</button>
         ${!DEFAULT_GROUPS.find(dg=>dg.id===g.id)?`<button class="btn bd bs bic" onclick="delGroup('${g.id}')" title="ลบกลุ่ม">🗑</button>`:''}
       </div>
@@ -1319,6 +1312,14 @@ function renderCatTree(){
       </div>
     </div>`).join('');
 }
+window.renameGroup=async(id)=>{
+  const g=DB.groups.find(x=>x.id===id);if(!g)return;
+  const newName=prompt('แก้ชื่อกลุ่ม:',g.name);
+  if(!newName||newName===g.name)return;
+  g.name=newName.trim();
+  await saveSetting('groups',{list:DB.groups});
+  renderCatTree();toast('✅ แก้ชื่อกลุ่มแล้ว');
+};
 window.openAddCatInGroup=(gid)=>{
   addCatGroupId=gid;
   const g=getGroup(gid);
@@ -1709,40 +1710,6 @@ function renderBud(){
   const cT={};exp.forEach(t=>{cT[t.cat]=(cT[t.cat]||0)+Number(t.amount);});
 
   // ══ Overview Flow ══
-  const g=DB.goals[pid]||DB.goals['all']||{};
-  const goalInc=g.income||0,goalSav=g.saving||0,goalInv=g.invest||0;
-  const goalExp=Math.max(goalInc-goalSav-goalInv,0);
-  const flowEl=document.getElementById('bud-flow-rows');
-  if(flowEl){
-    if(goalInc>0){
-      const rows=[
-        {label:'💰 รายรับ',     goal:goalInc, real:tI,  color:'var(--gn)', isIncome:true},
-        {label:'🏦 ออม',        goal:goalSav, real:tS,  color:'var(--ac)'},
-        {label:'📈 ลงทุน',      goal:goalInv, real:0,   color:'var(--bl)'},
-        {label:'💸 ใช้จ่าย',    goal:goalExp, real:tE,  color:'var(--am)'},
-      ];
-      flowEl.innerHTML=rows.map(r=>{
-        const pct=r.goal>0?Math.min(Math.round(r.real/r.goal*100),100):0;
-        const over=r.real>r.goal&&r.goal>0;
-        const col=over?'var(--rd)':r.color;
-        const pctOfInc=goalInc>0?Math.round(r.goal/goalInc*100):0;
-        return `<div class="bud-flow-row">
-          <span class="bud-flow-label">${r.label}</span>
-          <div class="bud-flow-bar"><div class="bud-flow-fill" style="width:${pct}%;background:${col}"></div></div>
-          <span class="bud-flow-val" style="color:${over?'var(--rd)':'var(--tx)'}">
-            ${fmtM(r.real)}<span style="color:var(--t3);font-weight:400"> / ${fmtM(r.goal)}</span>
-          </span>
-          <span class="bud-flow-pct">${pctOfInc}%</span>
-        </div>`;
-      }).join('')+`
-      <div style="display:flex;justify-content:space-between;padding:8px 0;border-top:1px solid var(--br);margin-top:4px;font-size:12px">
-        <span class="tm">คงเหลือจากแผน</span>
-        <span class="fw7 ${goalInc-goalSav-goalInv-tE>=0?'tg':'tr'}">${fmtM(goalInc-goalSav-goalInv-tE)}</span>
-      </div>`;
-    } else {
-      flowEl.innerHTML=`<div class="empty">ยังไม่ได้ตั้งเป้าหมาย — กด ✏️ ตั้งเป้า ด้านบน</div>`;
-    }
-  }
 
   // ══ Progress bars แบบ Collapsible ══
   const expCats=DB.cats.filter(c=>c.forType==='expense'||c.forType==='all');
