@@ -406,13 +406,7 @@ tr:last-child td{border-bottom:none}
         <div id="add-msg" style="margin-top:8px"></div>
       </div>
 
-      <!-- บันทึกด่วน -->
-      <div class="card">
-        <div class="ctitle">บันทึกด่วน <button class="btn bo bs" onclick="addPresetPrompt()">+ เพิ่ม</button></div>
-        <div class="pgrid" id="quick-grid"></div>
-      </div>
-
-      <!-- จัดการหมวดหมู่ inline — ล่างสุด -->
+      <!-- จัดการหมวดหมู่ inline — ใต้ปุ่มบันทึก -->
       <div class="card">
         <div class="ctitle">จัดการหมวดหมู่
           <button class="btn bo bs" onclick="toggleInlineCatMgr()" id="cat-mgr-toggle-btn">▾ ดูทั้งหมด</button>
@@ -420,9 +414,14 @@ tr:last-child td{border-bottom:none}
         <div id="inline-cat-mgr" style="display:none">
           <div id="inline-cat-tree"></div>
           <div style="height:10px"></div>
-          <!-- เพิ่มกลุ่มใหม่ -->
           <button class="btn bp bs" style="width:100%;justify-content:center" onclick="addGroupPrompt()">+ เพิ่มกลุ่มหลักใหม่</button>
         </div>
+      </div>
+
+      <!-- บันทึกด่วน -->
+      <div class="card">
+        <div class="ctitle">บันทึกด่วน <button class="btn bo bs" onclick="addPresetPrompt()">+ เพิ่ม</button></div>
+        <div class="pgrid" id="quick-grid"></div>
       </div>
     </div>
 
@@ -1744,17 +1743,19 @@ function renderCumChart(period,exp,cT){
   const totalDays=daysBetween(period.start,period.end);
   const viewDays=daysBetween(startDate,endDate);
   const labels=[],goalData=[],actualData=[];
-  let cumActual=0,dayN=0;
+  // นับ cumulative จริงก่อน startDate (สำคัญสำหรับ filter สัปดาห์/เดือน)
+  let cumActual=exp
+    .filter(t=>t.date>=period.start&&t.date<startDate&&filterCatIds.includes(t.cat))
+    .reduce((s,t)=>s+Number(t.amount),0);
+  let dayN=0;
   let cur=new Date(startDate+'T00:00:00');
   const end=new Date(endDate+'T00:00:00');
-  // นับวันที่ผ่านมาก่อน startDate เพื่อ offset goal
   const offsetDays=daysBetween(period.start,startDate)-1;
   while(cur<=end){
     const ds=cur.toISOString().split('T')[0];dayN++;
     labels.push(fmtD(ds));
     goalData.push(totalDays>0?Math.round(totalBudget/totalDays*(offsetDays+dayN)):0);
     const dayAmt=exp.filter(t=>t.date===ds&&filterCatIds.includes(t.cat)).reduce((s,t)=>s+Number(t.amount),0);
-    // ถ้าเป็น week/month ให้ cumulative ต่อจากที่มีก่อน startDate
     cumActual+=dayAmt;actualData.push(Math.round(cumActual));
     cur.setDate(cur.getDate()+1);
   }
@@ -1768,7 +1769,7 @@ function renderCumChart(period,exp,cT){
     options:{responsive:true,maintainAspectRatio:false,
       plugins:{legend:{display:true,position:'top',labels:{color:tc,font:{size:11},boxWidth:12}},
         tooltip:{callbacks:{label:ctx=>`${ctx.dataset.label}: ${fmtM(ctx.raw)}`}}},
-      scales:{x:{grid:{display:false},ticks:{color:tc,font:{size:9},maxRotation:0,autoSkip:true,maxTicksLimit:8}},
+      scales:{x:{grid:{display:false},ticks:{color:tc,font:{size:9},maxRotation:45,autoSkip:true,maxTicksLimit:viewDays<=7?7:viewDays<=31?15:8}},
               y:{grid:{color:gc},ticks:{color:tc,font:{size:10},callback:v=>'฿'+(v>=1000?(v/1000).toFixed(0)+'K':v)}}}}
   });
 }
