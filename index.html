@@ -478,9 +478,31 @@ tr:last-child td{border-bottom:none}
         <div><div class="ptitle">งบประมาณ</div><div class="psub" id="bud-sub">—</div></div>
         <button class="btn bp bs" onclick="openPeriodModal()">+ สร้างงวด</button>
       </div>
-      <div style="display:flex;gap:7px;flex-wrap:wrap;margin-bottom:12px">
+      <div style="display:flex;gap:7px;flex-wrap:wrap;margin-bottom:8px">
         <select id="bud-year" onchange="onBudPeriodChange()" style="flex:1;min-width:90px;max-width:110px;font-size:12px;padding:7px 10px"><option value="all">ทุกปี</option></select>
         <select id="bud-period" onchange="renderBud()" style="flex:2;font-size:12px;padding:7px 10px"><option value="all">ทุกงวด</option></select>
+      </div>
+      <!-- Date Range Picker หน้างบ -->
+      <div class="drp-wrap" id="drp-budget">
+        <button class="drp-btn" onclick="toggleDRP('drp-budget')">
+          <span style="font-size:16px">📅</span>
+          <span class="drp-label" id="drp-budget-label">หรือเลือกช่วงวันที่เอง...</span>
+          <span style="color:var(--t3);font-size:11px">▾</span>
+        </button>
+        <div class="drp-panel" id="drp-budget-panel">
+          <div class="drp-shortcuts">
+            <button class="drp-sc" onclick="setDRP('budget','today')">วันนี้</button>
+            <button class="drp-sc" onclick="setDRP('budget','week')">สัปดาห์นี้</button>
+            <button class="drp-sc" onclick="setDRP('budget','month')">เดือนนี้</button>
+            <button class="drp-sc" onclick="setDRP('budget','lastmonth')">เดือนที่แล้ว</button>
+            <button class="drp-sc" onclick="setDRP('budget','all')">ล้างช่วงวัน</button>
+          </div>
+          <div class="drp-cal" id="drp-budget-cal"></div>
+          <div class="drp-footer">
+            <button class="btn bo bs" onclick="clearDRP('budget')">ล้าง</button>
+            <button class="btn bp bs" onclick="applyDRP('budget')">ยืนยัน</button>
+          </div>
+        </div>
       </div>
       <!-- งบรายหมวด collapsible -->
       <div class="card">
@@ -739,7 +761,8 @@ let importRows=[],cumFilterGroup='all',cumTimeRange='period';
 const charts={};
 const drpState={
   records:{from:'',to:'',calYear:new Date().getFullYear(),calMonth:new Date().getMonth(),selecting:0},
-  dashboard:{from:'',to:'',calYear:new Date().getFullYear(),calMonth:new Date().getMonth(),selecting:0}
+  dashboard:{from:'',to:'',calYear:new Date().getFullYear(),calMonth:new Date().getMonth(),selecting:0},
+  budget:{from:'',to:'',calYear:new Date().getFullYear(),calMonth:new Date().getMonth(),selecting:0}
 };
 // emoji picker state
 let selEmojiTarget=''; // 'inline-{groupId}' หรือ 'modal'
@@ -958,10 +981,10 @@ window.setDRP=(page,preset)=>{
   s.selecting=0;updateDRPLabel(page);
   document.querySelectorAll(`#drp-${page}-panel .drp-sc`).forEach((b,i)=>{b.classList.toggle('active',['today','week','month','lastmonth','all'][i]===preset);});
   document.getElementById(`drp-${page}-panel`)?.classList.remove('open');
-  if(page==='records')renderRecords();if(page==='dashboard')renderDash();
+  if(page==='records')renderRecords();if(page==='dashboard')renderDash();if(page==='budget')renderBud();
 };
-window.clearDRP=(page)=>{drpState[page].from='';drpState[page].to='';drpState[page].selecting=0;updateDRPLabel(page);document.getElementById(`drp-${page}-panel`)?.classList.remove('open');if(page==='records')renderRecords();if(page==='dashboard')renderDash();};
-window.applyDRP=(page)=>{const s=drpState[page];if(s.from&&!s.to)s.to=s.from;updateDRPLabel(page);document.getElementById(`drp-${page}-panel`)?.classList.remove('open');if(page==='records')renderRecords();if(page==='dashboard')renderDash();};
+window.clearDRP=(page)=>{drpState[page].from='';drpState[page].to='';drpState[page].selecting=0;updateDRPLabel(page);document.getElementById(`drp-${page}-panel`)?.classList.remove('open');if(page==='records')renderRecords();if(page==='dashboard')renderDash();if(page==='budget')renderBud();};
+window.applyDRP=(page)=>{const s=drpState[page];if(s.from&&!s.to)s.to=s.from;updateDRPLabel(page);document.getElementById(`drp-${page}-panel`)?.classList.remove('open');if(page==='records')renderRecords();if(page==='dashboard')renderDash();if(page==='budget')renderBud();};
 function updateDRPLabel(page){
   const s=drpState[page];const el=document.getElementById(`drp-${page}-label`);if(!el)return;
   if(!s.from&&!s.to)el.textContent='ทุกช่วงเวลา';
@@ -1182,8 +1205,14 @@ function renderInlineCatTree(){
   tree.innerHTML=DB.groups.map(g=>`
     <div class="cat-mgr-group">
       <div class="cat-mgr-group-hdr">
-        <span class="cat-mgr-group-name">${g.name}</span>
-        <button class="btn bo bs bic" onclick="renameGroup('${g.id}')" title="แก้ชื่อ">✏️</button>
+        <span class="cat-mgr-group-name" id="gname-${g.id}">${g.name}</span>
+        <input id="gname-input-${g.id}" value="${g.name}"
+          style="display:none;flex:1;padding:4px 8px;font-size:13px;font-weight:700;
+          border-radius:6px;border:1px solid var(--ac);background:var(--s2);
+          color:var(--tx);font-family:inherit;min-width:0"
+          onblur="saveGroupName('${g.id}')"
+          onkeydown="if(event.key==='Enter')saveGroupName('${g.id}');if(event.key==='Escape')cancelGroupEdit('${g.id}')">
+        <button class="btn bo bs bic" onclick="startGroupEdit('${g.id}')" title="แก้ชื่อ">✏️</button>
         ${!DEFAULT_GROUPS.find(dg=>dg.id===g.id)?
           `<button class="btn bd bs bic" onclick="delGroup('${g.id}')" title="ลบกลุ่ม">🗑</button>`:''}
       </div>
@@ -1243,11 +1272,25 @@ window.delCat=async(id)=>{
   renderInlineCatTree();toast('ลบหมวดแล้ว');
 };
 
-window.renameGroup=async(id)=>{
+window.startGroupEdit=(id)=>{
+  document.getElementById(`gname-${id}`).style.display='none';
+  const inp=document.getElementById(`gname-input-${id}`);
+  inp.style.display='block';inp.focus();inp.select();
+};
+window.cancelGroupEdit=(id)=>{
   const g=DB.groups.find(x=>x.id===id);if(!g)return;
-  const newName=prompt('แก้ชื่อกลุ่ม:',g.name);
-  if(!newName||newName===g.name)return;
-  g.name=newName.trim();
+  const inp=document.getElementById(`gname-input-${id}`);
+  if(inp){inp.style.display='none';inp.value=g.name;}
+  const span=document.getElementById(`gname-${id}`);
+  if(span)span.style.display='';
+};
+window.saveGroupName=async(id)=>{
+  const inp=document.getElementById(`gname-input-${id}`);if(!inp)return;
+  const newName=inp.value.trim();
+  if(!newName){cancelGroupEdit(id);return;}
+  const g=DB.groups.find(x=>x.id===id);if(!g)return;
+  if(newName===g.name){cancelGroupEdit(id);return;}
+  g.name=newName;
   await saveSetting('groups',{list:DB.groups});
   renderInlineCatTree();toast('✅ แก้ชื่อกลุ่มแล้ว');
 };
@@ -1579,11 +1622,22 @@ function renderBud(){
   const pid=document.getElementById('bud-period')?.value||'all';
   populateBudPeriodSel(year);
   const period=DB.periods.find(p=>p.id===pid)||null;
-  document.getElementById('bud-sub').textContent=pid!=='all'?`งวด ${pid}`:year!=='all'?`ปี ${year}`:'ทุกช่วงเวลา';
 
+  // DRP override — ถ้าเลือกช่วงวันเอง ให้ใช้แทนงวด
+  const bdrp=drpState.budget;
+  const useDRP=bdrp.from&&bdrp.to;
   let txns=DB.txn;
-  if(period)txns=txns.filter(t=>t.date>=period.start&&t.date<=period.end);
-  else if(year!=='all')txns=txns.filter(t=>getY(t.date)===year);
+  let effectivePeriod=period; // สำหรับกราฟ cumulative
+  if(useDRP){
+    txns=txns.filter(t=>t.date>=bdrp.from&&t.date<=bdrp.to);
+    document.getElementById('bud-sub').textContent=`${fmtD(bdrp.from)} — ${fmtD(bdrp.to)}`;
+    effectivePeriod={start:bdrp.from,end:bdrp.to};
+  } else {
+    if(period)txns=txns.filter(t=>t.date>=period.start&&t.date<=period.end);
+    else if(year!=='all')txns=txns.filter(t=>getY(t.date)===year);
+    document.getElementById('bud-sub').textContent=pid!=='all'?`งวด ${pid}`:year!=='all'?`ปี ${year}`:'ทุกช่วงเวลา';
+  }
+  updateDRPLabel('budget');
   const exp=txns.filter(t=>t.type==='expense');
   const inc=txns.filter(t=>t.type==='income');
   const sav=txns.filter(t=>t.type==='saving');
