@@ -732,6 +732,21 @@ tr:last-child td{border-bottom:none}
     </div>
   </div>
 
+  <!-- MODAL: Logout Confirm -->
+  <div class="mover" id="modal-logout">
+    <div class="mdl" style="max-width:360px;text-align:center;padding:28px 24px">
+      <div style="font-size:48px;margin-bottom:12px">👋</div>
+      <div style="font-size:17px;font-weight:800;margin-bottom:8px">ออกจากระบบ?</div>
+      <div style="font-size:13px;color:var(--t2);margin-bottom:24px;line-height:1.6">
+        ข้อมูลทั้งหมดถูกบันทึกแล้ว<br>สามารถกลับมาใช้งานได้เสมอ
+      </div>
+      <div style="display:flex;gap:10px;justify-content:center">
+        <button class="btn bo" style="flex:1;justify-content:center" onclick="closeModal('modal-logout')">ยกเลิก</button>
+        <button class="btn bd" style="flex:1;justify-content:center;font-weight:700" onclick="doLogout()">🚪 ออกจากระบบ</button>
+      </div>
+    </div>
+  </div>
+
 </div><!-- end #app -->
 
 <script type="module">
@@ -1049,7 +1064,7 @@ applyTheme();
 // ══ AUTH ══════════════════════════════════════
 document.getElementById('btn-login').onclick=async()=>{try{await signInWithPopup(auth,provider);}catch(e){toast('❌ Login ไม่สำเร็จ');}};
 window.doLogout=async()=>{unsubs.forEach(u=>u());unsubs=[];DB={txn:[],budgets:{},assets:[],cats:[...DEFAULT_CATS],groups:[...DEFAULT_GROUPS],presets:[...DEFAULT_PRESETS],periods:[],goals:{},settings:{}};await signOut(auth);};
-window.confirmLogout=()=>{if(confirm('ออกจากระบบไหม?'))doLogout();};
+window.confirmLogout=()=>openModal('modal-logout');
 window.closeUserMenu=()=>document.getElementById('user-dropdown').classList.remove('open');
 window.toggleUserMenu=()=>document.getElementById('user-dropdown').classList.toggle('open');
 document.addEventListener('click',e=>{
