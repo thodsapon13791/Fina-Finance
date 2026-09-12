@@ -508,6 +508,16 @@ tr:last-child td{border-bottom:none}
       <div class="card">
         <div class="ctitle">สถานะงบรายหมวด <small id="bud-total-label"></small></div>
         <div id="bud-status"></div>
+        <div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--br)">
+          <button class="btn bp bs" style="width:100%;justify-content:center" onclick="toggleBudCatMgr()">
+            ⚙️ <span id="bud-cat-mgr-label">จัดการหมวดหมู่</span>
+          </button>
+          <div id="bud-cat-mgr" style="display:none;margin-top:12px">
+            <div id="bud-inline-cat-tree"></div>
+            <div style="height:10px"></div>
+            <button class="btn bp bs" style="width:100%;justify-content:center" onclick="addGroupPrompt('bud')">+ เพิ่มกลุ่มหลักใหม่</button>
+          </div>
+        </div>
       </div>
       <!-- สรุปงวด -->
       <div class="summary-card" id="bud-summary-card">
@@ -1321,12 +1331,124 @@ window.delGroup=async(id)=>{
   renderInlineCatTree();toast('ลบกลุ่มแล้ว');
 };
 
-window.addGroupPrompt=async()=>{
-  const name=prompt('ชื่อกลุ่มหมวดหลักใหม่ (ใส่ Emoji นำหน้า เช่น 🐾 สัตว์เลี้ยง):');if(!name)return;
+window.toggleBudCatMgr=()=>{
+  const el=document.getElementById('bud-cat-mgr');
+  const label=document.getElementById('bud-cat-mgr-label');
+  if(!el)return;
+  const shown=el.style.display!=='none';
+  el.style.display=shown?'none':'block';
+  if(label)label.textContent=shown?'จัดการหมวดหมู่':'ซ่อน';
+  if(!shown)renderBudInlineCatTree();
+};
+
+function renderBudInlineCatTree(){
+  const tree=document.getElementById('bud-inline-cat-tree');if(!tree)return;
+  const byGroup={};
+  DB.cats.forEach(c=>{const gid=c.group||'g-other';if(!byGroup[gid])byGroup[gid]=[];byGroup[gid].push(c);});
+  tree.innerHTML=DB.groups.map(g=>`
+    <div class="cat-mgr-group">
+      <div class="cat-mgr-group-hdr">
+        <span class="cat-mgr-group-name" id="bgname-${g.id}">${g.name}</span>
+        <input id="bgname-input-${g.id}" value="${g.name}"
+          style="display:none;flex:1;padding:4px 8px;font-size:13px;font-weight:700;
+          border-radius:6px;border:1px solid var(--ac);background:var(--s2);
+          color:var(--tx);font-family:inherit;min-width:0"
+          onblur="saveBudGroupName('${g.id}')"
+          onkeydown="if(event.key==='Enter')saveBudGroupName('${g.id}');if(event.key==='Escape')cancelBudGroupEdit('${g.id}')">
+        <button class="btn bo bs bic" onclick="startBudGroupEdit('${g.id}')" title="แก้ชื่อ">✏️</button>
+        ${!DEFAULT_GROUPS.find(dg=>dg.id===g.id)?
+          `<button class="btn bd bs bic" onclick="delGroupFromBud('${g.id}')">🗑</button>`:''}
+      </div>
+      <div class="cat-mgr-body">
+        ${(byGroup[g.id]||[]).map(c=>`
+          <div class="cat-item">
+            <div class="cat-item-icon" style="background:${c.color}22">${c.icon}</div>
+            <span class="cat-item-name">${c.name}</span>
+            <span class="cat-item-type">${c.forType==='income'?'รับ':c.forType==='saving'?'ออม':c.forType==='all'?'ทั้งหมด':'จ่าย'}</span>
+            <button class="btn bd bs bic" onclick="delCatFromBud('${c.id}')">×</button>
+          </div>`).join('')||
+          '<div style="color:var(--t3);font-size:12px;padding:4px 0;font-style:italic">ยังไม่มีหมวด</div>'}
+        <div style="margin-top:8px;padding-top:8px;border-top:1px solid var(--br)">
+          <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
+            ${buildEmojiPicker('bg-${g.id}','📌')}
+            <input type="text" id="bnc-name-${g.id}" placeholder="ชื่อหมวดใหม่"
+              style="flex:1;min-width:100px;padding:7px 10px;font-size:13px">
+            <select id="bnc-type-${g.id}" style="max-width:90px;padding:7px 8px;font-size:12px">
+              <option value="expense">จ่าย</option>
+              <option value="income">รับ</option>
+              <option value="saving">ออม</option>
+              <option value="all">ทั้งหมด</option>
+            </select>
+            <button class="btn bp bs" onclick="addCatFromBud('${g.id}')">+ เพิ่ม</button>
+          </div>
+        </div>
+      </div>
+    </div>`).join('');
+}
+
+// inline edit group name (budget page)
+window.startBudGroupEdit=(id)=>{
+  document.getElementById(`bgname-${id}`).style.display='none';
+  const inp=document.getElementById(`bgname-input-${id}`);
+  inp.style.display='block';inp.focus();inp.select();
+};
+window.cancelBudGroupEdit=(id)=>{
+  const g=DB.groups.find(x=>x.id===id);if(!g)return;
+  const inp=document.getElementById(`bgname-input-${id}`);
+  if(inp){inp.style.display='none';inp.value=g.name;}
+  const span=document.getElementById(`bgname-${id}`);
+  if(span)span.style.display='';
+};
+window.saveBudGroupName=async(id)=>{
+  const inp=document.getElementById(`bgname-input-${id}`);if(!inp)return;
+  const newName=inp.value.trim();
+  if(!newName){cancelBudGroupEdit(id);return;}
+  const g=DB.groups.find(x=>x.id===id);if(!g)return;
+  if(newName===g.name){cancelBudGroupEdit(id);return;}
+  g.name=newName;
+  await saveSetting('groups',{list:DB.groups});
+  renderBudInlineCatTree();renderInlineCatTree();renderBud();toast('✅ แก้ชื่อกลุ่มแล้ว');
+};
+window.addCatFromBud=async(gid)=>{
+  const name=document.getElementById(`bnc-name-${gid}`)?.value.trim();
+  const type=document.getElementById(`bnc-type-${gid}`)?.value||'expense';
+  const icon=getPickedEmoji(`bg-${gid}`);
+  if(!name){toast('⚠️ ใส่ชื่อหมวด');return;}
+  const color=PRESET_COLORS[Math.floor(Math.random()*PRESET_COLORS.length)];
+  DB.cats.push({id:'cat_'+Date.now(),name,icon,color,forType:type,group:gid});
+  await saveSetting('cats',{list:DB.cats});
+  populateCatSel('f-cat',curType);populateCatSel('mf-cat',curType);populateSels();
+  renderBudInlineCatTree();renderBud();toast('✅ เพิ่มหมวด "'+name+'"');
+};
+window.delCatFromBud=async(id)=>{
+  const c=getCat(id);
+  const txnCount=DB.txn.filter(t=>t.cat===id).length;
+  let msg=`ลบหมวด "${c.name}"?`;
+  if(txnCount>0)msg+=`\n⚠️ มี ${txnCount} รายการที่ใช้หมวดนี้ จะแสดงเป็น "ไม่มีหมวด"`;
+  if(!confirm(msg))return;
+  DB.cats=DB.cats.filter(x=>x.id!==id);
+  await saveSetting('cats',{list:DB.cats});
+  populateCatSel('f-cat',curType);populateCatSel('mf-cat',curType);populateSels();
+  renderBudInlineCatTree();renderBud();toast('ลบหมวดแล้ว');
+};
+window.delGroupFromBud=async(id)=>{
+  const hasCats=DB.cats.some(c=>c.group===id);
+  let msg='ลบกลุ่มนี้?';
+  if(hasCats)msg+='\n⚠️ หมวดในกลุ่มนี้จะถูกย้ายไป "อื่นๆ"';
+  if(!confirm(msg))return;
+  DB.groups=DB.groups.filter(g=>g.id!==id);
+  DB.cats=DB.cats.map(c=>c.group===id?{...c,group:'g-other'}:c);
+  await Promise.all([saveSetting('groups',{list:DB.groups}),saveSetting('cats',{list:DB.cats})]);
+  renderBudInlineCatTree();renderInlineCatTree();renderBud();toast('ลบกลุ่มแล้ว');
+};
+window.addGroupPrompt=async(ctx='')=>{
+  const name=prompt('ชื่อกลุ่มหมวดหลักใหม่ (ใส่ Emoji นำหน้า เช่น 🧴 ของใช้ส่วนตัว):');if(!name)return;
   const id='g-'+Date.now();
   DB.groups.push({id,name,color:PRESET_COLORS[Math.floor(Math.random()*PRESET_COLORS.length)]});
   await saveSetting('groups',{list:DB.groups});
-  renderInlineCatTree();toast('✅ เพิ่มกลุ่ม "'+name+'"');
+  if(ctx==='bud'){renderBudInlineCatTree();renderBud();}
+  else{renderInlineCatTree();}
+  toast('✅ เพิ่มกลุ่ม "'+name+'"');
 };
 
 // ══ ADD PAGE ══════════════════════════════════
