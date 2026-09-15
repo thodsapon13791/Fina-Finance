@@ -1687,7 +1687,13 @@ window.submitTxn=async(ctx='')=>{
     await saveTxn({date,desc,cat,type:curType,amount,tag,note},editId||null);
     toast(editId?'✅ แก้ไขแล้ว':'✅ บันทึกแล้ว');editId=null;
     if(ctx==='m')closeModal('modal-add');
-    else{clearForm();document.getElementById('add-msg').innerHTML='<div class="alert ag">✅ บันทึกสำเร็จ</div>';setTimeout(()=>{const e=document.getElementById('add-msg');if(e)e.innerHTML='';},2500);}
+    else{
+      const lastDate=document.getElementById('f-date').value;
+      clearForm();
+      if(lastDate)document.getElementById('f-date').value=lastDate;
+      document.getElementById('add-msg').innerHTML='<div class="alert ag">✅ บันทึกสำเร็จ</div>';
+      setTimeout(()=>{const e=document.getElementById('add-msg');if(e)e.innerHTML='';},2500);
+    }
     populateSels();
   }catch(e){toast('❌ บันทึกไม่สำเร็จ: '+e.message);}
 };
