@@ -142,8 +142,8 @@ tr:last-child td{border-bottom:none}
 .tagb{font-size:10px;padding:1px 5px;border-radius:4px;background:var(--s3);color:var(--t2);margin-left:4px}
 
 /* PROGRESS */
-.pbg{height:8px;background:var(--s3);border-radius:4px;overflow:hidden}
-.pfill{height:100%;border-radius:4px;transition:width .5s}
+.pbg{height:14px;background:var(--s3);border-radius:7px;overflow:hidden}
+.pfill{height:100%;border-radius:7px;transition:width .5s}
 .prow{margin:8px 0}
 .phd{display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;font-size:12px}
 
@@ -1937,18 +1937,23 @@ function renderBud(){
 
   // ยอดรวมทุกหมวด
   const grandTotal=expCats.reduce((s,c)=>s+(cT[c.id]||0),0);
-  const grandBudget=expCats.reduce((s,c)=>s+(DB.budgets[c.id]||0),0);
-  document.getElementById('bud-total-label').textContent=grandBudget>0?`รวมใช้ ${fmtM(grandTotal)} / ${fmtM(grandBudget)}`:grandTotal>0?`รวมใช้ ${fmtM(grandTotal)}`:'';
+  const grandBudget=expCats.reduce((s,c)=>s+getPBudget(c.id),0);
+  const grandOver=grandBudget>0&&grandTotal>grandBudget;
+  const grandRemain=grandBudget-grandTotal;
+  document.getElementById('bud-total-label').textContent=grandBudget>0
+    ?`รวมใช้ ${fmtM(grandTotal)} / ${fmtM(grandBudget)} · ${grandOver?`เกิน ${fmtM(-grandRemain)}`:`เหลือ ${fmtM(grandRemain)}`}`
+    :grandTotal>0?`รวมใช้ ${fmtM(grandTotal)}`:'';
 
   // กลุ่มรายจ่ายเท่านั้น (ไม่รวม income/saving)
   const expGroups=DB.groups.filter(g=>!['g-income','g-saving'].includes(g.id));
   document.getElementById('bud-status').innerHTML=expGroups.map((g,gi)=>{
     const cats=byGroup[g.id]||[];if(!cats.length)return '';
     const gTotal=cats.reduce((s,c)=>s+(cT[c.id]||0),0);
-    const gBudget=cats.reduce((s,c)=>s+(DB.budgets[c.id]||0),0);
-    const gPct=gBudget>0?Math.min(Math.round(gTotal/gBudget*100),100):0;
+    const gBudget=cats.reduce((s,c)=>s+getPBudget(c.id),0);
+    const gPct=gBudget>0?Math.round(gTotal/gBudget*100):0;
     const gOver=gTotal>gBudget&&gBudget>0;
     const gCol=gOver?'var(--rd)':gPct>80?'var(--am)':'var(--gn)';
+    const gBarW=gBudget>0?Math.min(gPct,100):0;
     const isOpen=openGroups.has(g.id);
     return`<div class="bud-group">
       <div class="bud-group-hdr" onclick="toggleBudGroup('${g.id}','bg-${gi}','barr-${gi}')">
@@ -1956,10 +1961,13 @@ function renderBud(){
         <span class="bud-group-info">${gBudget>0?`<span style="color:${gCol}">${fmtM(gTotal)} / ${fmtM(gBudget)} ${gPct}%</span>`:gTotal>0?`<span class="tm">${fmtM(gTotal)}</span>`:'<span class="tm">—</span>'}</span>
         <span class="bud-group-arrow ${isOpen?'open':''}" id="barr-${gi}">▾</span>
       </div>
-      ${gBudget>0?`<div class="bud-group-bar"><div class="pbg"><div class="pfill" style="width:${gPct}%;background:${gCol}"></div></div></div>`:''}
+      ${gBudget>0?`<div class="bud-group-bar">
+        <div class="pbg"><div class="pfill" style="width:${gBarW}%;background:${gCol}"></div></div>
+        <div style="font-size:11px;color:${gCol};margin-top:3px;font-weight:600">${gOver?`⚠️ เกิน ${fmtM(gTotal-gBudget)}`:`เหลือ ${fmtM(gBudget-gTotal)}`}</div>
+      </div>`:''}
       <div class="bud-group-body ${isOpen?'open':''}" id="bg-${gi}">
         ${cats.map(c=>{
-          const bgt=DB.budgets[c.id]||0,sp=cT[c.id]||0,isEdit=budEditId===c.id;
+          const bgt=getPBudget(c.id),sp=cT[c.id]||0,isEdit=budEditId===c.id;
           if(isEdit)return`<div class="bud-row">
             <div class="bud-row-hd"><span class="cat-name">${c.icon} ${c.name}</span></div>
             <div class="bud-edit-row">
@@ -1977,15 +1985,18 @@ function renderBud(){
               <button class="bud-edit-btn" onclick="startBudEdit('${c.id}','${g.id}')">➕</button>
             </div>
           </div>`;
-          const pct=Math.min(Math.round(sp/bgt*100),100),over=sp>bgt;
+          const pct=Math.round(sp/bgt*100),over=sp>bgt;
           const col=over?'var(--rd)':pct>80?'var(--am)':'var(--gn)';
+          const barW=Math.min(pct,100);
+          const diff=over?sp-bgt:bgt-sp;
           return`<div class="bud-row">
             <div class="bud-row-hd">
               <span class="cat-name">${c.icon} ${c.name}</span>
               <span class="bud-amt">${fmtM(sp)} / ${fmtM(bgt)} <span style="color:${col};font-weight:700">${over?'⚠️':''} ${pct}%</span></span>
               <button class="bud-edit-btn" onclick="startBudEdit('${c.id}','${g.id}')">✏️</button>
             </div>
-            <div class="pbg"><div class="pfill" style="width:${pct}%;background:${col}"></div></div>
+            <div class="pbg"><div class="pfill" style="width:${barW}%;background:${col}"></div></div>
+            <div style="font-size:11px;color:${col};margin-top:3px;font-weight:600">${over?`⚠️ เกิน ${fmtM(diff)}`:`เหลือ ${fmtM(diff)}`}</div>
           </div>`;
         }).join('')}
       </div>
@@ -2010,7 +2021,7 @@ function renderBud(){
   ${expGroups.map(g=>{
     const cats=DB.cats.filter(c=>c.forType==='expense'&&c.group===g.id);
     const gTotal=cats.reduce((s,c)=>s+(cT[c.id]||0),0);
-    const gBudget=cats.reduce((s,c)=>s+(DB.budgets[c.id]||0),0);
+    const gBudget=cats.reduce((s,c)=>s+getPBudget(c.id),0);
     if(!gTotal&&!gBudget)return '';
     return`<div class="summary-row"><span class="tm">${g.name}</span>
       <span><span class="fw7">${fmtM(gTotal)}</span>${gBudget>0?`<span class="summary-pct">/ ${fmtM(gBudget)}</span>`:''}</span>
@@ -2040,17 +2051,37 @@ window.toggleBudGroup=(gid,bodyId,arrId)=>{
   if(body)body.classList.toggle('open',openGroups.has(gid));
   if(arr)arr.classList.toggle('open',openGroups.has(gid));
 };
+// ══ BUDGET PER PERIOD HELPERS ════════════════
+function getBudgetKey(){
+  const pid=document.getElementById('bud-period')?.value||'all';
+  return pid!=='all'?pid:'all';
+}
+function getPBudget(catId){
+  const key=getBudgetKey();
+  // ลองหา budget ของงวดนั้นก่อน ถ้าไม่มีใช้ all
+  return (DB.budgets[key]&&DB.budgets[key][catId]!=null)
+    ?DB.budgets[key][catId]
+    :(DB.budgets['all']?.[catId]||0);
+}
+async function savePBudget(catId,val){
+  const key=getBudgetKey();
+  if(!DB.budgets[key])DB.budgets[key]={};
+  if(val===null){delete DB.budgets[key][catId];}
+  else{DB.budgets[key][catId]=val;}
+  await saveSetting('budgets',DB.budgets);
+}
+
 window.startBudEdit=(catId,gid)=>{budEditId=catId;openGroups.add(gid);renderBud();};
 window.cancelBudEdit=(gid)=>{budEditId=null;if(gid)openGroups.add(gid);renderBud();};
 window.confirmBudEdit=async(catId,gid)=>{
   const v=parseFloat(document.getElementById('bud-edit-input')?.value);
   if(!v||v<=0){toast('⚠️ ใส่จำนวนงบ');return;}
-  DB.budgets[catId]=v;await saveSetting('budgets',DB.budgets);
+  await savePBudget(catId,v);
   budEditId=null;if(gid)openGroups.add(gid);renderBud();toast('💾 บันทึกงบแล้ว');
 };
 window.removeBudget=async(catId,gid)=>{
   if(!confirm('ลบงบหมวดนี้?'))return;
-  delete DB.budgets[catId];await saveSetting('budgets',DB.budgets);
+  await savePBudget(catId,null);
   budEditId=null;if(gid)openGroups.add(gid);renderBud();toast('ลบงบแล้ว');
 };
 
@@ -2072,7 +2103,7 @@ function renderCumChart(period,exp,cT){
   let filterCatIds=cumFilterGroup==='all'
     ?DB.cats.filter(c=>c.forType==='expense').map(c=>c.id)
     :DB.cats.filter(c=>c.group===cumFilterGroup&&c.forType==='expense').map(c=>c.id);
-  const totalBudget=filterCatIds.reduce((s,id)=>s+(DB.budgets[id]||0),0);
+  const totalBudget=filterCatIds.reduce((s,id)=>s+getPBudget(id),0);
   const totalDays=daysBetween(period.start,period.end);
   let startDate=period.start,endDate=period.end;
   const now=today();
@@ -2152,7 +2183,7 @@ window.exportPDF=()=>{
   const groupRows=expGroups.map(g=>{
     const cats=DB.cats.filter(c=>c.forType==='expense'&&c.group===g.id);
     const gTotal=cats.reduce((s,c)=>s+(cT[c.id]||0),0);
-    const gBudget=cats.reduce((s,c)=>s+(DB.budgets[c.id]||0),0);
+    const gBudget=cats.reduce((s,c)=>s+getPBudget(c.id),0);
     if(!gTotal&&!gBudget)return '';
     const pct=tI>0?Math.round(gTotal/tI*100):0;
     return`<tr><td style="padding:6px 0;border-bottom:1px solid #eee;color:#555">${g.name}</td>
