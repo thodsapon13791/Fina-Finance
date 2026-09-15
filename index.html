@@ -730,7 +730,7 @@ tr:last-child td{border-bottom:none}
       <div class="alert ab" style="margin-bottom:12px">💡 เช่น งวด 2026-02 = 25 ม.ค. — 24 ก.พ.</div>
       <div class="frow">
         <div class="fg" style="margin-bottom:0"><label>ปี (YYYY)</label><input type="number" id="p-year" placeholder="2026" inputmode="numeric"></div>
-        <div class="fg" style="margin-bottom:0"><label>งวด (01-12)</label><input type="number" id="p-num" placeholder="01" min="1" max="12" inputmode="numeric"></div>
+        <div class="fg" style="margin-bottom:0"><label>งวด (01-12)</label><select id="p-num"><option value="">เลือกงวด</option><option value="01">งวด 01</option><option value="02">งวด 02</option><option value="03">งวด 03</option><option value="04">งวด 04</option><option value="05">งวด 05</option><option value="06">งวด 06</option><option value="07">งวด 07</option><option value="08">งวด 08</option><option value="09">งวด 09</option><option value="10">งวด 10</option><option value="11">งวด 11</option><option value="12">งวด 12</option></select></div>
       </div>
       <div style="height:8px"></div>
       <div class="frow">
@@ -824,7 +824,7 @@ tr:last-child td{border-bottom:none}
       <div style="border-top:1px solid var(--br);padding-top:12px">
         <div style="font-size:12px;font-weight:700;color:var(--t2);margin-bottom:10px">+ เพิ่มงวดใหม่</div>
         <div class="frow" style="margin-bottom:8px">
-          <div class="fg" style="margin-bottom:0"><label>งวดที่</label><input type="number" id="pmgr-num" placeholder="01" min="1" max="24" inputmode="numeric" style="font-size:14px;padding:10px 12px"></div>
+          <div class="fg" style="margin-bottom:0"><label>งวดที่</label><select id="pmgr-num" style="font-size:14px;padding:10px 12px"><option value="">เลือกงวด</option><option value="01">งวด 01</option><option value="02">งวด 02</option><option value="03">งวด 03</option><option value="04">งวด 04</option><option value="05">งวด 05</option><option value="06">งวด 06</option><option value="07">งวด 07</option><option value="08">งวด 08</option><option value="09">งวด 09</option><option value="10">งวด 10</option><option value="11">งวด 11</option><option value="12">งวด 12</option></select></div>
           <div class="fg" style="margin-bottom:0"><label>หมายเหตุ</label><input type="text" id="pmgr-note" placeholder="เช่น เงินเดือนเข้า 25" style="font-size:14px;padding:10px 12px"></div>
         </div>
         <div class="frow" style="margin-bottom:10px">
@@ -1569,7 +1569,7 @@ window.renderPeriodMgr=()=>{
       <!-- Edit mode (hidden) -->
       <div id="pmgr-edit-${p.id}" style="display:none;padding:12px 14px;background:var(--sf);border-top:1px solid var(--br)">
         <div class="frow" style="margin-bottom:8px">
-          <div class="fg" style="margin-bottom:0"><label>งวดที่</label><input type="number" id="pe-num-${p.id}" value="${p.num||p.id.split('-')[1]}" min="1" max="24" inputmode="numeric" style="font-size:14px;padding:10px 12px"></div>
+          <div class="fg" style="margin-bottom:0"><label>งวดที่</label><select id="pe-num-${p.id}" style="font-size:14px;padding:10px 12px"><option value="01" ${(p.num||p.id.split('-')[1])==='01'?'selected':''}>งวด 01</option><option value="02" ${(p.num||p.id.split('-')[1])==='02'?'selected':''}>งวด 02</option><option value="03" ${(p.num||p.id.split('-')[1])==='03'?'selected':''}>งวด 03</option><option value="04" ${(p.num||p.id.split('-')[1])==='04'?'selected':''}>งวด 04</option><option value="05" ${(p.num||p.id.split('-')[1])==='05'?'selected':''}>งวด 05</option><option value="06" ${(p.num||p.id.split('-')[1])==='06'?'selected':''}>งวด 06</option><option value="07" ${(p.num||p.id.split('-')[1])==='07'?'selected':''}>งวด 07</option><option value="08" ${(p.num||p.id.split('-')[1])==='08'?'selected':''}>งวด 08</option><option value="09" ${(p.num||p.id.split('-')[1])==='09'?'selected':''}>งวด 09</option><option value="10" ${(p.num||p.id.split('-')[1])==='10'?'selected':''}>งวด 10</option><option value="11" ${(p.num||p.id.split('-')[1])==='11'?'selected':''}>งวด 11</option><option value="12" ${(p.num||p.id.split('-')[1])==='12'?'selected':''}>งวด 12</option></select></div>
           <div class="fg" style="margin-bottom:0"><label>หมายเหตุ</label><input type="text" id="pe-note-${p.id}" value="${p.note||''}" placeholder="หมายเหตุ" style="font-size:14px;padding:10px 12px"></div>
         </div>
         <div class="frow" style="margin-bottom:10px">
@@ -1615,11 +1615,11 @@ window.deletePeriod=async(id)=>{
 };
 window.submitPeriodMgr=async()=>{
   const year=document.getElementById('pmgr-year')?.value||today().substring(0,4);
-  const num=String(document.getElementById('pmgr-num')?.value||'').padStart(2,'0');
+  const num=document.getElementById('pmgr-num')?.value||'';
   const start=document.getElementById('pmgr-start')?.value;
   const end=document.getElementById('pmgr-end')?.value;
   const note=document.getElementById('pmgr-note')?.value.trim()||'';
-  if(!num||num==='00'||!start||!end){toast('⚠️ กรอกข้อมูลให้ครบ');return;}
+  if(!num||!start||!end){toast('⚠️ กรอกข้อมูลให้ครบ');return;}
   if(start>=end){toast('⚠️ วันเริ่มต้องมาก่อนวันสิ้นสุด');return;}
   const id=`${year}-${num}`;
   if(DB.periods.find(p=>p.id===id)){toast(`⚠️ งวด ${id} มีอยู่แล้ว`);return;}
