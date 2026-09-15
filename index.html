@@ -499,7 +499,7 @@ tr:last-child td{border-bottom:none}
     <div id="page-budget" class="page">
       <div class="phdr">
         <div><div class="ptitle">งบประมาณ</div><div class="psub" id="bud-sub">—</div></div>
-        <button class="btn bp bs" onclick="openPeriodModal()">+ สร้างงวด</button>
+        <button class="btn bp bs" onclick="openPeriodMgr()">📅 จัดการงวด</button>
       </div>
       <div style="display:flex;gap:7px;flex-wrap:wrap;margin-bottom:8px">
         <select id="bud-year" onchange="onBudPeriodChange()" style="flex:1;min-width:90px;max-width:110px;font-size:12px;padding:7px 10px"><option value="all">ทุกปี</option></select>
@@ -776,6 +776,62 @@ tr:last-child td{border-bottom:none}
       <div style="display:flex;gap:10px">
         <button class="btn bo" style="flex:1;justify-content:center" onclick="closeModal('modal-logout')">ยกเลิก</button>
         <button class="btn bd" style="flex:1;justify-content:center;font-weight:700" onclick="doLogout()">🚪 ออกจากระบบ</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: Add Cat Group -->
+  <div class="mover" id="modal-add-group">
+    <div class="mdl" style="max-width:400px">
+      <div class="mhandle"></div>
+      <div class="mtitle"><span>เพิ่มกลุ่มหมวดใหม่</span><button class="btn bo bs bic" onclick="closeModal('modal-add-group')">✕</button></div>
+      <div class="fg">
+        <label>ชื่อกลุ่ม</label>
+        <input type="text" id="new-group-name" placeholder="เช่น 🧴 ของใช้ส่วนตัว">
+        <div style="font-size:11px;color:var(--t3);margin-top:4px">แนะนำใส่ Emoji นำหน้าเพื่อให้ดูง่าย</div>
+      </div>
+      <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:14px">
+        <span style="font-size:11px;color:var(--t3);width:100%;font-weight:700;text-transform:uppercase;letter-spacing:.05em">ตัวอย่าง</span>
+        ${['🧴 ของใช้ส่วนตัว','🐾 สัตว์เลี้ยง','👶 ลูก/เด็ก','🎓 การศึกษา','💼 ธุรกิจ','🎮 เกม/งานอดิเรก'].map(n=>
+          `<button class="drp-sc" onclick="document.getElementById('new-group-name').value='${n}'">${n}</button>`
+        ).join('')}
+      </div>
+      <input type="hidden" id="new-group-ctx">
+      <input type="hidden" id="new-group-type">
+      <div class="row" style="gap:9px">
+        <button class="btn bp" style="flex:1;justify-content:center" onclick="confirmAddCatGroup()">+ เพิ่มกลุ่ม</button>
+        <button class="btn bo" onclick="closeModal('modal-add-group')">ยกเลิก</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: Period Manager -->
+  <div class="mover" id="modal-period-mgr" style="align-items:flex-end">
+    <div class="mdl" style="max-width:560px;max-height:85vh">
+      <div class="mhandle"></div>
+      <div class="mtitle">
+        <span>📅 จัดการงวด</span>
+        <button class="btn bo bs bic" onclick="closeModal('modal-period-mgr')">✕</button>
+      </div>
+      <!-- Year selector -->
+      <div class="fg" style="margin-bottom:12px">
+        <label>ปี</label>
+        <select id="pmgr-year" onchange="renderPeriodMgr()" style="font-size:14px;padding:10px 12px"></select>
+      </div>
+      <!-- Period list -->
+      <div id="pmgr-list" style="margin-bottom:12px"></div>
+      <!-- Add new period -->
+      <div style="border-top:1px solid var(--br);padding-top:12px">
+        <div style="font-size:12px;font-weight:700;color:var(--t2);margin-bottom:10px">+ เพิ่มงวดใหม่</div>
+        <div class="frow" style="margin-bottom:8px">
+          <div class="fg" style="margin-bottom:0"><label>งวดที่</label><input type="number" id="pmgr-num" placeholder="01" min="1" max="24" inputmode="numeric" style="font-size:14px;padding:10px 12px"></div>
+          <div class="fg" style="margin-bottom:0"><label>หมายเหตุ</label><input type="text" id="pmgr-note" placeholder="เช่น เงินเดือนเข้า 25" style="font-size:14px;padding:10px 12px"></div>
+        </div>
+        <div class="frow" style="margin-bottom:10px">
+          <div class="fg" style="margin-bottom:0"><label>วันเริ่มต้น</label><input type="date" id="pmgr-start" style="font-size:14px;padding:10px 12px"></div>
+          <div class="fg" style="margin-bottom:0"><label>วันสิ้นสุด</label><input type="date" id="pmgr-end" style="font-size:14px;padding:10px 12px"></div>
+        </div>
+        <button class="btn bp" style="width:100%;justify-content:center;padding:12px" onclick="submitPeriodMgr()">💾 สร้างงวด</button>
       </div>
     </div>
   </div>
@@ -1451,11 +1507,132 @@ window.saveCatGroupName=async(gid,ctx)=>{
   g.name=newName;await saveSetting('groups',{list:DB.groups});
   renderCatMgr(ctx);if(ctx==='bud')renderBud();toast('✅ แก้ชื่อกลุ่มแล้ว');
 };
-window.addCatGroup=async(type,ctx)=>{
-  const name=prompt('ชื่อกลุ่มหมวดใหม่ (ใส่ Emoji นำหน้า เช่น 🧴 ของใช้ส่วนตัว):');if(!name)return;
+window.addCatGroup=(type,ctx)=>{
+  document.getElementById('new-group-name').value='';
+  document.getElementById('new-group-ctx').value=ctx;
+  document.getElementById('new-group-type').value=type;
+  openModal('modal-add-group');
+  setTimeout(()=>document.getElementById('new-group-name')?.focus(),100);
+};
+window.confirmAddCatGroup=async()=>{
+  const name=document.getElementById('new-group-name')?.value.trim();
+  const ctx=document.getElementById('new-group-ctx')?.value||'main';
+  if(!name){toast('⚠️ ใส่ชื่อกลุ่ม');return;}
   DB.groups.push({id:'g-'+Date.now(),name,color:PRESET_COLORS[Math.floor(Math.random()*PRESET_COLORS.length)]});
   await saveSetting('groups',{list:DB.groups});
-  renderCatMgr(ctx);if(ctx==='bud')renderBud();toast('✅ เพิ่มกลุ่ม "'+name+'"');
+  closeModal('modal-add-group');
+  renderCatMgr(ctx);if(ctx==='bud')renderBud();
+  toast('✅ เพิ่มกลุ่ม "'+name+'"');
+};
+
+// ══ PERIOD MANAGER ════════════════════════════
+window.openPeriodMgr=()=>{
+  populatePeriodMgrYear();
+  renderPeriodMgr();
+  openModal('modal-period-mgr');
+};
+function populatePeriodMgrYear(){
+  const s=document.getElementById('pmgr-year');if(!s)return;
+  const years=[...new Set(DB.periods.map(p=>p.year))].sort().reverse();
+  const nowY=today().substring(0,4);
+  if(!years.includes(nowY))years.unshift(nowY);
+  const cur=s.value;
+  s.innerHTML=years.map(y=>`<option value="${y}">${y}</option>`).join('');
+  if(cur&&years.includes(cur))s.value=cur;
+  else s.value=nowY;
+  // pre-fill year input
+  document.getElementById('pmgr-num').value='';
+  document.getElementById('pmgr-start').value='';
+  document.getElementById('pmgr-end').value='';
+  document.getElementById('pmgr-note').value='';
+}
+window.renderPeriodMgr=()=>{
+  const year=document.getElementById('pmgr-year')?.value||today().substring(0,4);
+  const periods=DB.periods.filter(p=>p.year===year).sort((a,b)=>a.id.localeCompare(b.id));
+  const list=document.getElementById('pmgr-list');if(!list)return;
+  if(!periods.length){
+    list.innerHTML=`<div class="empty" style="padding:20px">ยังไม่มีงวดในปี ${year}<br><span style="font-size:12px;color:var(--t3)">เพิ่มงวดแรกด้านล่างได้เลย</span></div>`;
+    return;
+  }
+  list.innerHTML=periods.map(p=>`
+    <div class="pmgr-row" id="pmgr-row-${p.id}" style="border:1px solid var(--br);border-radius:var(--rl);margin-bottom:8px;overflow:hidden">
+      <!-- View mode -->
+      <div id="pmgr-view-${p.id}" style="display:flex;align-items:center;gap:10px;padding:12px 14px;background:var(--s2)">
+        <div style="flex:1">
+          <div style="font-size:13px;font-weight:700">งวด ${p.num||p.id.split('-')[1]}</div>
+          <div style="font-size:12px;color:var(--t2);margin-top:2px">${fmtDLong(p.start)} — ${fmtDLong(p.end)}</div>
+          ${p.note?`<div style="font-size:11px;color:var(--t3);margin-top:2px">${p.note}</div>`:''}
+        </div>
+        <button class="btn bo bs bic" onclick="startEditPeriod('${p.id}')" title="แก้ไข" style="min-width:36px;min-height:36px">✏️</button>
+        <button class="btn bd bs bic" onclick="deletePeriod('${p.id}')" title="ลบ" style="min-width:36px;min-height:36px">🗑</button>
+      </div>
+      <!-- Edit mode (hidden) -->
+      <div id="pmgr-edit-${p.id}" style="display:none;padding:12px 14px;background:var(--sf);border-top:1px solid var(--br)">
+        <div class="frow" style="margin-bottom:8px">
+          <div class="fg" style="margin-bottom:0"><label>งวดที่</label><input type="number" id="pe-num-${p.id}" value="${p.num||p.id.split('-')[1]}" min="1" max="24" inputmode="numeric" style="font-size:14px;padding:10px 12px"></div>
+          <div class="fg" style="margin-bottom:0"><label>หมายเหตุ</label><input type="text" id="pe-note-${p.id}" value="${p.note||''}" placeholder="หมายเหตุ" style="font-size:14px;padding:10px 12px"></div>
+        </div>
+        <div class="frow" style="margin-bottom:10px">
+          <div class="fg" style="margin-bottom:0"><label>วันเริ่มต้น</label><input type="date" id="pe-start-${p.id}" value="${p.start}" style="font-size:14px;padding:10px 12px"></div>
+          <div class="fg" style="margin-bottom:0"><label>วันสิ้นสุด</label><input type="date" id="pe-end-${p.id}" value="${p.end}" style="font-size:14px;padding:10px 12px"></div>
+        </div>
+        <div style="display:flex;gap:8px">
+          <button class="btn bp bs" style="flex:1;justify-content:center;padding:10px" onclick="saveEditPeriod('${p.id}')">✓ บันทึก</button>
+          <button class="btn bo bs" style="flex:1;justify-content:center;padding:10px" onclick="cancelEditPeriod('${p.id}')">✕ ยกเลิก</button>
+        </div>
+      </div>
+    </div>`).join('');
+};
+window.startEditPeriod=(id)=>{
+  document.getElementById(`pmgr-view-${id}`).style.display='none';
+  document.getElementById(`pmgr-edit-${id}`).style.display='block';
+  document.getElementById(`pe-start-${id}`)?.focus();
+};
+window.cancelEditPeriod=(id)=>{
+  document.getElementById(`pmgr-view-${id}`).style.display='flex';
+  document.getElementById(`pmgr-edit-${id}`).style.display='none';
+};
+window.saveEditPeriod=async(id)=>{
+  const num=document.getElementById(`pe-num-${id}`)?.value.padStart(2,'0');
+  const start=document.getElementById(`pe-start-${id}`)?.value;
+  const end=document.getElementById(`pe-end-${id}`)?.value;
+  const note=document.getElementById(`pe-note-${id}`)?.value.trim()||'';
+  if(!start||!end){toast('⚠️ กรอกวันให้ครบ');return;}
+  if(start>=end){toast('⚠️ วันเริ่มต้องมาก่อนวันสิ้นสุด');return;}
+  const i=DB.periods.findIndex(p=>p.id===id);
+  if(i>=0)DB.periods[i]={...DB.periods[i],num,start,end,note};
+  await saveSetting('periods',{list:DB.periods});
+  renderPeriodMgr();populateBudPeriodSel(document.getElementById('bud-year')?.value||'all');
+  renderBud();toast('✅ แก้ไขงวดแล้ว');
+};
+window.deletePeriod=async(id)=>{
+  const p=DB.periods.find(x=>x.id===id);if(!p)return;
+  const txnCount=DB.txn.filter(t=>t.date>=p.start&&t.date<=p.end).length;
+  if(!confirm(`ลบงวด ${id}?${txnCount>0?`\n⚠️ มี ${txnCount} รายการในงวดนี้ (รายการจะไม่ถูกลบ)`:''}`)  )return;
+  DB.periods=DB.periods.filter(x=>x.id!==id);
+  await saveSetting('periods',{list:DB.periods});
+  renderPeriodMgr();populateSels();renderBud();toast('ลบงวดแล้ว');
+};
+window.submitPeriodMgr=async()=>{
+  const year=document.getElementById('pmgr-year')?.value||today().substring(0,4);
+  const num=String(document.getElementById('pmgr-num')?.value||'').padStart(2,'0');
+  const start=document.getElementById('pmgr-start')?.value;
+  const end=document.getElementById('pmgr-end')?.value;
+  const note=document.getElementById('pmgr-note')?.value.trim()||'';
+  if(!num||num==='00'||!start||!end){toast('⚠️ กรอกข้อมูลให้ครบ');return;}
+  if(start>=end){toast('⚠️ วันเริ่มต้องมาก่อนวันสิ้นสุด');return;}
+  const id=`${year}-${num}`;
+  if(DB.periods.find(p=>p.id===id)){toast(`⚠️ งวด ${id} มีอยู่แล้ว`);return;}
+  DB.periods.push({id,year,num,start,end,note,createdAt:today()});
+  DB.periods.sort((a,b)=>b.id.localeCompare(a.id));
+  await saveSetting('periods',{list:DB.periods});
+  document.getElementById('pmgr-num').value='';
+  document.getElementById('pmgr-start').value='';
+  document.getElementById('pmgr-end').value='';
+  document.getElementById('pmgr-note').value='';
+  populatePeriodMgrYear();renderPeriodMgr();
+  populateSels();populateBudPeriodSel(year);renderBud();
+  toast(`✅ สร้างงวด ${id} แล้ว`);
 };
 window.delCatGroup=async(gid,ctx)=>{
   const hasCats=DB.cats.some(c=>c.group===gid);
