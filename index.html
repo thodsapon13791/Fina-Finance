@@ -531,7 +531,7 @@ tr:last-child td{border-bottom:none}
         <div class="ctitle">สัดส่วนรายจ่าย <small id="bud-donut-label"></small></div>
         <div style="display:flex;gap:16px;align-items:center;flex-wrap:wrap">
           <div style="position:relative;width:160px;height:160px;flex-shrink:0;margin:0 auto">
-            <canvas id="c-bud-donut" style="width:160px;height:160px"></canvas>
+            <canvas id="c-bud-donut" width="160" height="160"></canvas>
             <div id="bud-donut-center" style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;pointer-events:none">
               <div style="font-size:11px;color:var(--t2);font-weight:600">รวมใช้</div>
               <div id="bud-donut-total" style="font-size:17px;font-weight:800;color:var(--tx);letter-spacing:-.5px"></div>
@@ -2106,7 +2106,7 @@ window.removeBudget=async(catId,gid)=>{
 // ══ BUDGET DONUT CHART ════════════════════════
 function renderBudDonut(expGroups,cT,tE){
   destroyC('c-bud-donut');
-  const {tc}=getCC();
+  const card=document.getElementById('bud-donut-card');
 
   // รวมยอดต่อกลุ่ม
   const groupData=expGroups.map(g=>{
@@ -2114,19 +2114,22 @@ function renderBudDonut(expGroups,cT,tE){
     const total=cats.reduce((s,c)=>s+(cT[c.id]||0),0);
     const budget=cats.reduce((s,c)=>s+getPBudget(c.id),0);
     return{name:g.name,color:g.color||'#9ca3af',total,budget};
-  }).filter(g=>g.total>0||g.budget>0).sort((a,b)=>b.total-a.total);
+  }).filter(g=>g.total>0);
 
-  // ซ่อน card ถ้าไม่มีข้อมูล
-  const card=document.getElementById('bud-donut-card');
-  if(!groupData.length){if(card)card.style.display='none';return;}
+  // ซ่อน card ถ้าไม่มีรายจ่าย
+  if(!groupData.length){
+    if(card)card.style.display='none';
+    return;
+  }
   if(card)card.style.display='block';
 
-  document.getElementById('bud-donut-total').textContent=fmtM(tE);
-  document.getElementById('bud-donut-label').textContent=tE>0?'':'ยังไม่มีรายจ่าย';
+  const totalEl=document.getElementById('bud-donut-total');
+  if(totalEl)totalEl.textContent=fmtM(tE);
 
   const canvas=document.getElementById('c-bud-donut');
   if(!canvas)return;
 
+  const {tc}=getCC();
   charts['c-bud-donut']=new Chart(canvas,{
     type:'doughnut',
     data:{
@@ -2134,22 +2137,25 @@ function renderBudDonut(expGroups,cT,tE){
       datasets:[{
         data:groupData.map(g=>Math.round(g.total)),
         backgroundColor:groupData.map(g=>g.color),
-        borderColor:groupData.map(()=>'var(--sf)'),
-        borderWidth:3,
-        hoverOffset:6,
+        borderColor:'transparent',
+        borderWidth:2,
+        hoverOffset:8,
       }]
     },
     options:{
       responsive:false,
-      cutout:'68%',
+      animation:{duration:600},
+      cutout:'65%',
       plugins:{
         legend:{display:false},
-        tooltip:{callbacks:{
-          label:ctx=>{
-            const pct=tE>0?Math.round(ctx.raw/tE*100):0;
-            return` ${ctx.label}: ${fmtM(ctx.raw)} (${pct}%)`;
+        tooltip:{
+          callbacks:{
+            label:ctx=>{
+              const pct=tE>0?Math.round(ctx.raw/tE*100):0;
+              return` ${ctx.label}: ${fmtM(ctx.raw)} (${pct}%)`;
+            }
           }
-        }}
+        }
       }
     }
   });
@@ -2163,21 +2169,22 @@ function renderBudDonut(expGroups,cT,tE){
     const barW=g.budget>0?Math.min(Math.round(g.total/g.budget*100),100):0;
     return`<div style="display:flex;flex-direction:column;gap:3px">
       <div style="display:flex;align-items:center;justify-content:space-between;gap:8px">
-        <div style="display:flex;align-items:center;gap:6px;min-width:0">
+        <div style="display:flex;align-items:center;gap:6px;min-width:0;flex:1">
           <div style="width:10px;height:10px;border-radius:3px;background:${g.color};flex-shrink:0"></div>
-          <span style="font-size:12px;color:var(--tx);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${g.name}</span>
+          <span style="font-size:12px;color:var(--tx);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${g.name}</span>
         </div>
-        <div style="text-align:right;flex-shrink:0">
+        <div style="text-align:right;flex-shrink:0;display:flex;align-items:center;gap:4px">
           <span style="font-size:12px;font-weight:700;color:${over?'var(--rd)':'var(--tx)'}">${fmtM(g.total)}</span>
-          <span style="font-size:10px;color:var(--t3);margin-left:3px">${pct}%</span>
+          <span style="font-size:10px;color:var(--t3);background:var(--s2);padding:1px 5px;border-radius:6px">${pct}%</span>
         </div>
       </div>
-      ${g.budget>0?`<div style="display:flex;align-items:center;gap:6px">
+      ${g.budget>0?`
+      <div style="display:flex;align-items:center;gap:6px">
         <div style="width:10px;flex-shrink:0"></div>
-        <div style="flex:1;height:5px;background:var(--s3);border-radius:3px;overflow:hidden">
-          <div style="height:100%;width:${barW}%;background:${over?'var(--rd)':g.color};border-radius:3px;transition:width .4s"></div>
+        <div style="flex:1;height:4px;background:var(--s3);border-radius:2px;overflow:hidden">
+          <div style="height:100%;width:${barW}%;background:${over?'var(--rd)':g.color};border-radius:2px;transition:width .4s"></div>
         </div>
-        <span style="font-size:10px;color:${over?'var(--rd)':'var(--t3)'};flex-shrink:0;font-weight:600">${over?`เกิน ${fmtM(g.total-g.budget)}`:`/ ${fmtM(g.budget)}`}</span>
+        <span style="font-size:10px;color:${over?'var(--rd)':'var(--t3)'};flex-shrink:0;font-weight:${over?'700':'400'}">${over?`⚠️เกิน ${fmtM(g.total-g.budget)}`:`/${fmtM(g.budget)}`}</span>
       </div>`:''}
     </div>`;
   }).join('');
