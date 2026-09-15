@@ -526,6 +526,21 @@ tr:last-child td{border-bottom:none}
           </div>
         </div>
       </div>
+      <!-- Donut Chart สัดส่วนรายจ่าย -->
+      <div class="card" id="bud-donut-card">
+        <div class="ctitle">สัดส่วนรายจ่าย <small id="bud-donut-label"></small></div>
+        <div style="display:flex;gap:16px;align-items:center;flex-wrap:wrap">
+          <div style="position:relative;width:160px;height:160px;flex-shrink:0;margin:0 auto">
+            <canvas id="c-bud-donut" style="width:160px;height:160px"></canvas>
+            <div id="bud-donut-center" style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;pointer-events:none">
+              <div style="font-size:11px;color:var(--t2);font-weight:600">รวมใช้</div>
+              <div id="bud-donut-total" style="font-size:17px;font-weight:800;color:var(--tx);letter-spacing:-.5px"></div>
+            </div>
+          </div>
+          <div id="bud-donut-legend" style="flex:1;min-width:140px;display:flex;flex-direction:column;gap:7px"></div>
+        </div>
+      </div>
+
       <div class="card">
         <div class="ctitle">สถานะงบรายหมวด <small id="bud-total-label"></small></div>
         <div id="bud-status"></div>
@@ -2028,6 +2043,9 @@ function renderBud(){
     </div>`;
   }).join('')}`;
 
+  // Donut chart
+  renderBudDonut(expGroups,cT,tE);
+
   // Cumulative chart
   renderCumChart(effectivePeriod,exp,cT);
 
@@ -2084,6 +2102,86 @@ window.removeBudget=async(catId,gid)=>{
   await savePBudget(catId,null);
   budEditId=null;if(gid)openGroups.add(gid);renderBud();toast('ลบงบแล้ว');
 };
+
+// ══ BUDGET DONUT CHART ════════════════════════
+function renderBudDonut(expGroups,cT,tE){
+  destroyC('c-bud-donut');
+  const {tc}=getCC();
+
+  // รวมยอดต่อกลุ่ม
+  const groupData=expGroups.map(g=>{
+    const cats=DB.cats.filter(c=>c.forType==='expense'&&c.group===g.id);
+    const total=cats.reduce((s,c)=>s+(cT[c.id]||0),0);
+    const budget=cats.reduce((s,c)=>s+getPBudget(c.id),0);
+    return{name:g.name,color:g.color||'#9ca3af',total,budget};
+  }).filter(g=>g.total>0||g.budget>0).sort((a,b)=>b.total-a.total);
+
+  // ซ่อน card ถ้าไม่มีข้อมูล
+  const card=document.getElementById('bud-donut-card');
+  if(!groupData.length){if(card)card.style.display='none';return;}
+  if(card)card.style.display='block';
+
+  document.getElementById('bud-donut-total').textContent=fmtM(tE);
+  document.getElementById('bud-donut-label').textContent=tE>0?'':'ยังไม่มีรายจ่าย';
+
+  const canvas=document.getElementById('c-bud-donut');
+  if(!canvas)return;
+
+  charts['c-bud-donut']=new Chart(canvas,{
+    type:'doughnut',
+    data:{
+      labels:groupData.map(g=>g.name),
+      datasets:[{
+        data:groupData.map(g=>Math.round(g.total)),
+        backgroundColor:groupData.map(g=>g.color),
+        borderColor:groupData.map(()=>'var(--sf)'),
+        borderWidth:3,
+        hoverOffset:6,
+      }]
+    },
+    options:{
+      responsive:false,
+      cutout:'68%',
+      plugins:{
+        legend:{display:false},
+        tooltip:{callbacks:{
+          label:ctx=>{
+            const pct=tE>0?Math.round(ctx.raw/tE*100):0;
+            return` ${ctx.label}: ${fmtM(ctx.raw)} (${pct}%)`;
+          }
+        }}
+      }
+    }
+  });
+
+  // Legend
+  const leg=document.getElementById('bud-donut-legend');
+  if(!leg)return;
+  leg.innerHTML=groupData.map(g=>{
+    const pct=tE>0?Math.round(g.total/tE*100):0;
+    const over=g.budget>0&&g.total>g.budget;
+    const barW=g.budget>0?Math.min(Math.round(g.total/g.budget*100),100):0;
+    return`<div style="display:flex;flex-direction:column;gap:3px">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:8px">
+        <div style="display:flex;align-items:center;gap:6px;min-width:0">
+          <div style="width:10px;height:10px;border-radius:3px;background:${g.color};flex-shrink:0"></div>
+          <span style="font-size:12px;color:var(--tx);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${g.name}</span>
+        </div>
+        <div style="text-align:right;flex-shrink:0">
+          <span style="font-size:12px;font-weight:700;color:${over?'var(--rd)':'var(--tx)'}">${fmtM(g.total)}</span>
+          <span style="font-size:10px;color:var(--t3);margin-left:3px">${pct}%</span>
+        </div>
+      </div>
+      ${g.budget>0?`<div style="display:flex;align-items:center;gap:6px">
+        <div style="width:10px;flex-shrink:0"></div>
+        <div style="flex:1;height:5px;background:var(--s3);border-radius:3px;overflow:hidden">
+          <div style="height:100%;width:${barW}%;background:${over?'var(--rd)':g.color};border-radius:3px;transition:width .4s"></div>
+        </div>
+        <span style="font-size:10px;color:${over?'var(--rd)':'var(--t3)'};flex-shrink:0;font-weight:600">${over?`เกิน ${fmtM(g.total-g.budget)}`:`/ ${fmtM(g.budget)}`}</span>
+      </div>`:''}
+    </div>`;
+  }).join('');
+}
 
 // ══ CUMULATIVE CHART ══════════════════════════
 function renderCumChart(period,exp,cT){
