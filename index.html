@@ -2116,18 +2116,27 @@ function renderBudDonut(expGroups,cT,tE){
     return{name:g.name,color:g.color||'#9ca3af',total,budget};
   }).filter(g=>g.total>0);
 
-  // ซ่อน card ถ้าไม่มีรายจ่าย
-  if(!groupData.length){
-    if(card)card.style.display='none';
-    return;
-  }
+  // ซ่อน card ถ้าไม่มีรายจ่าย — แสดงตลอด
   if(card)card.style.display='block';
 
   const totalEl=document.getElementById('bud-donut-total');
-  if(totalEl)totalEl.textContent=fmtM(tE);
+  if(totalEl)totalEl.textContent=tE>0?fmtM(tE):'฿0';
 
   const canvas=document.getElementById('c-bud-donut');
   if(!canvas)return;
+
+  // ถ้าไม่มีข้อมูล แสดง placeholder
+  if(!groupData.length){
+    const {tc}=getCC();
+    charts['c-bud-donut']=new Chart(canvas,{
+      type:'doughnut',
+      data:{labels:['ยังไม่มีรายจ่าย'],datasets:[{data:[1],backgroundColor:['var(--s3)'],borderColor:'transparent',borderWidth:0}]},
+      options:{responsive:false,cutout:'65%',animation:{duration:0},plugins:{legend:{display:false},tooltip:{enabled:false}}}
+    });
+    const leg=document.getElementById('bud-donut-legend');
+    if(leg)leg.innerHTML=`<div style="color:var(--t3);font-size:12px;text-align:center;padding:20px 0">บันทึกรายจ่ายเพื่อดูสัดส่วน</div>`;
+    return;
+  }
 
   const {tc}=getCC();
   charts['c-bud-donut']=new Chart(canvas,{
@@ -2296,6 +2305,34 @@ window.exportPDF=()=>{
       <td style="padding:6px 0;border-bottom:1px solid #eee;text-align:right;color:#888">${pct}%</td>
       <td style="padding:6px 0;border-bottom:1px solid #eee;text-align:right;color:#888">${gBudget>0?fmtM(gBudget):'—'}</td></tr>`;
   }).join('');
+
+  // ดึง donut chart เป็น base64 image
+  const donutCanvas=document.getElementById('c-bud-donut');
+  const donutImg=donutCanvas&&charts['c-bud-donut']?donutCanvas.toDataURL('image/png'):'';
+
+  // สร้าง donut legend HTML สำหรับ PDF
+  const expGroupsPDF=DB.groups.filter(g=>!['g-income','g-saving'].includes(g.id));
+  const cTPDF={};txns.filter(t=>t.type==='expense').forEach(t=>{cTPDF[t.cat]=(cTPDF[t.cat]||0)+Number(t.amount);});
+  const donutLegendHTML=expGroupsPDF.map(g=>{
+    const cats=DB.cats.filter(c=>c.forType==='expense'&&c.group===g.id);
+    const gTotal=cats.reduce((s,c)=>s+(cTPDF[c.id]||0),0);
+    const gBudget=cats.reduce((s,c)=>s+getPBudget(c.id),0);
+    if(!gTotal&&!gBudget)return '';
+    const pct=tE>0?Math.round(gTotal/tE*100):0;
+    const over=gBudget>0&&gTotal>gBudget;
+    return`<div style="display:flex;align-items:center;justify-content:space-between;padding:5px 0;border-bottom:1px solid #f0f0f0">
+      <div style="display:flex;align-items:center;gap:8px">
+        <div style="width:12px;height:12px;border-radius:3px;background:${g.color||'#9ca3af'};flex-shrink:0"></div>
+        <span style="font-size:13px;color:#1a1a2e">${g.name}</span>
+      </div>
+      <div style="text-align:right">
+        <span style="font-weight:700;color:${over?'#e03040':'#1a1a2e'}">${fmtM(gTotal)}</span>
+        <span style="color:#888;margin-left:6px;font-size:12px">${pct}%</span>
+        ${gBudget>0?`<span style="color:${over?'#e03040':'#888'};margin-left:6px;font-size:11px">${over?`⚠️ เกิน ${fmtM(gTotal-gBudget)}`:`/ ${fmtM(gBudget)}`}</span>`:''}
+      </div>
+    </div>`;
+  }).join('');
+
   const html=`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Fina Finance</title>
   <style>body{font-family:-apple-system,sans-serif;color:#1a1a2e;max-width:600px;margin:0 auto;padding:32px 24px}
   .hdr{text-align:center;margin-bottom:28px;padding-bottom:20px;border-bottom:2px solid #5b52f0}
@@ -2304,12 +2341,24 @@ window.exportPDF=()=>{
   .sec{margin-bottom:24px}.sec-t{font-size:12px;font-weight:700;color:#888;text-transform:uppercase;letter-spacing:.07em;margin-bottom:10px;padding-bottom:4px;border-bottom:1px solid #eee}
   table{width:100%;border-collapse:collapse}
   .mr td{padding:8px 0;border-bottom:1px solid #f0f0f0;font-size:14px}
+  .chart-row{display:flex;align-items:center;gap:24px;margin-bottom:8px}
+  .chart-wrap{flex-shrink:0;text-align:center}
+  .chart-legend{flex:1}
   .mr.tot td{border-top:2px solid #5b52f0;border-bottom:none;font-weight:700;font-size:15px;padding-top:12px}
   .gn{color:#00a070}.rd{color:#e03040}.pr{color:#5b52f0}.rt{text-align:right}.mu{color:#888}
   .ftr{text-align:center;margin-top:32px;font-size:11px;color:#ccc;padding-top:16px;border-top:1px solid #eee}
   @media print{button{display:none}}</style></head><body>
   <div class="hdr"><div class="logo">💰</div><div class="title">Fina Finance</div>
   <div class="period">${periodLabel}</div><div class="gen">สร้างเมื่อ ${fmtDLong(today())}</div></div>
+  ${donutImg?`<div class="sec"><div class="sec-t">สัดส่วนรายจ่าย</div>
+    <div class="chart-row">
+      <div class="chart-wrap">
+        <img src="${donutImg}" width="160" height="160" style="border-radius:50%">
+        <div style="font-size:12px;color:#888;margin-top:6px">รวม ${fmtM(tE)}</div>
+      </div>
+      <div class="chart-legend">${donutLegendHTML}</div>
+    </div>
+  </div>`:''}
   <div class="sec"><div class="sec-t">สรุปภาพรวม</div><table>
     <tr class="mr"><td>💰 รายรับ</td><td class="rt gn">${fmtM(tI)}</td><td class="rt mu">100%</td></tr>
     <tr class="mr"><td>🏦 ออม/ลงทุน</td><td class="rt pr">${fmtM(tS)}</td><td class="rt mu">${tI>0?Math.round(tS/tI*100):0}%</td></tr>
