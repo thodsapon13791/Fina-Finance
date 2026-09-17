@@ -325,6 +325,21 @@ tr:last-child td{border-bottom:none}
   z-index:999;pointer-events:none;animation:fup .3s ease;white-space:nowrap;box-shadow:var(--shadow2)}
 @keyframes fup{from{opacity:0;transform:translateX(-50%) translateY(8px)}}
 
+/* ══ PERIOD CARDS ════════════════════════════ */
+#bud-period-scroll::-webkit-scrollbar{display:none}
+.period-card{flex-shrink:0;width:140px;border-radius:var(--rl);border:2px solid var(--br);background:var(--sf);padding:12px;cursor:pointer;transition:.15s;position:relative}
+.period-card:hover{border-color:var(--br2);transform:translateY(-2px)}
+.period-card.active{border-color:var(--ac);background:var(--a3);box-shadow:0 4px 16px var(--a3)}
+.period-card.today-period::after{content:'▶ ปัจจุบัน';position:absolute;top:-9px;left:10px;background:var(--gn);color:#fff;font-size:9px;font-weight:700;padding:2px 7px;border-radius:6px}
+.period-card-num{font-size:11px;font-weight:700;color:var(--t2);letter-spacing:.05em;margin-bottom:3px}
+.period-card-range{font-size:10px;color:var(--t3);margin-bottom:8px;line-height:1.4}
+.period-card-bar{height:6px;background:var(--s3);border-radius:3px;overflow:hidden;margin-bottom:5px}
+.period-card-fill{height:100%;border-radius:3px;transition:width .4s}
+.period-card-amt{font-size:13px;font-weight:800;letter-spacing:-.3px}
+.period-card-bud{font-size:10px;color:var(--t3);margin-top:2px}
+.period-card-add{flex-shrink:0;width:100px;border-radius:var(--rl);border:2px dashed var(--br2);background:transparent;padding:12px;cursor:pointer;transition:.15s;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;min-height:110px}
+.period-card-add:hover{border-color:var(--ac);background:var(--a3)}
+
 /* MODAL */
 .mover{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:500;display:none;align-items:flex-end;justify-content:center}
 @media(min-width:600px){.mover{align-items:center;padding:16px}}
@@ -497,42 +512,42 @@ tr:last-child td{border-bottom:none}
 
     <!-- ═══ BUDGET ══════════════════════════════ -->
     <div id="page-budget" class="page">
+      <!-- Header -->
       <div class="phdr">
         <div><div class="ptitle">งบประมาณ</div><div class="psub" id="bud-sub">—</div></div>
         <button class="btn bp bs" onclick="openPeriodMgr()">📅 จัดการงวด</button>
       </div>
-      <div style="display:flex;gap:7px;flex-wrap:wrap;margin-bottom:8px">
-        <select id="bud-year" onchange="onBudPeriodChange()" style="flex:1;min-width:90px;max-width:110px;font-size:12px;padding:7px 10px"><option value="all">ทุกปี</option></select>
-        <select id="bud-period" onchange="renderBud()" style="flex:2;font-size:12px;padding:7px 10px"><option value="all">ทุกงวด</option></select>
+
+      <!-- ปีที่เลือก -->
+      <div style="display:flex;gap:7px;align-items:center;margin-bottom:12px">
+        <select id="bud-year" onchange="onBudYearChange()" style="flex:1;font-size:13px;padding:9px 12px;border-radius:var(--rl);border:1px solid var(--br2);background:var(--sf);color:var(--tx)"><option value="all">ทุกปี</option></select>
+        <button class="btn bo bs" onclick="openPeriodMgr()">+ งวด</button>
       </div>
-      <div class="drp-wrap" id="drp-budget">
-        <button class="drp-btn" onclick="toggleDRP('drp-budget')">
-          <span style="font-size:16px">📅</span>
-          <span class="drp-label" id="drp-budget-label">หรือเลือกช่วงวันที่เอง...</span>
-          <span style="color:var(--t3);font-size:11px">▾</span>
-        </button>
-        <div class="drp-panel" id="drp-budget-panel">
-          <div class="drp-shortcuts">
-            <button class="drp-sc" onclick="setDRP('budget','today')">วันนี้</button>
-            <button class="drp-sc" onclick="setDRP('budget','week')">สัปดาห์นี้</button>
-            <button class="drp-sc" onclick="setDRP('budget','month')">เดือนนี้</button>
-            <button class="drp-sc" onclick="setDRP('budget','lastmonth')">เดือนที่แล้ว</button>
-            <button class="drp-sc" onclick="setDRP('budget','all')">ล้างช่วงวัน</button>
-          </div>
-          <div class="drp-cal" id="drp-budget-cal"></div>
-          <div class="drp-footer">
-            <button class="btn bo bs" onclick="clearDRP('budget')">ล้าง</button>
-            <button class="btn bp bs" onclick="applyDRP('budget')">ยืนยัน</button>
+
+      <!-- Period Card Scroll -->
+      <div style="margin-bottom:14px">
+        <div id="bud-period-scroll" style="display:flex;gap:8px;overflow-x:auto;padding-bottom:8px;scrollbar-width:none;-ms-overflow-style:none"></div>
+      </div>
+
+      <!-- กราฟเส้นทั้งปี -->
+      <div class="card">
+        <div class="ctitle">งบ vs ใช้จริง — ทั้งปี
+          <div style="display:flex;gap:5px">
+            <button class="cfilter-btn on" id="yr-btn-budget" onclick="setYrChart('budget',this)">งบ</button>
+            <button class="cfilter-btn" id="yr-btn-actual" onclick="setYrChart('actual',this)">จริง</button>
+            <button class="cfilter-btn" id="yr-btn-both" onclick="setYrChart('both',this)">ทั้งคู่</button>
           </div>
         </div>
+        <div class="cwrap" style="height:200px"><canvas id="c-yr-budget"></canvas></div>
       </div>
+
       <!-- Donut Chart สัดส่วนรายจ่าย -->
       <div class="card" id="bud-donut-card">
         <div class="ctitle">สัดส่วนรายจ่าย <small id="bud-donut-label"></small></div>
         <div style="display:flex;gap:16px;align-items:center;flex-wrap:wrap">
           <div style="position:relative;width:160px;height:160px;flex-shrink:0;margin:0 auto">
             <canvas id="c-bud-donut" width="160" height="160"></canvas>
-            <div id="bud-donut-center" style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;pointer-events:none">
+            <div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;pointer-events:none">
               <div style="font-size:11px;color:var(--t2);font-weight:600">รวมใช้</div>
               <div id="bud-donut-total" style="font-size:17px;font-weight:800;color:var(--tx);letter-spacing:-.5px"></div>
             </div>
@@ -541,10 +556,13 @@ tr:last-child td{border-bottom:none}
         </div>
       </div>
 
+      <!-- สถานะงบรายหมวด -->
       <div class="card">
         <div class="ctitle">สถานะงบรายหมวด <small id="bud-total-label"></small></div>
         <div id="bud-status"></div>
       </div>
+
+      <!-- สรุปการเงิน + Export -->
       <div class="summary-card" id="bud-summary-card">
         <div class="summary-header">
           <div class="summary-title">📊 สรุปการเงิน</div>
@@ -553,8 +571,12 @@ tr:last-child td{border-bottom:none}
         <div id="bud-summary-rows"></div>
       </div>
       <button class="btn bp" style="width:100%;justify-content:center;margin-bottom:12px" onclick="exportPDF()">📄 Export PDF</button>
+
+      <!-- งบ vs ใช้จริงสะสม (งวดปัจจุบัน) -->
       <div class="card">
-        <div class="ctitle">งบ vs ใช้จริงสะสม</div>
+        <div class="ctitle">งบ vs ใช้จริงสะสม
+          <div style="font-size:11px;color:var(--t3);font-weight:400" id="cum-period-label"></div>
+        </div>
         <div class="chart-filter" id="cum-filter"></div>
         <div class="chart-filter" id="cum-time-filter" style="border-top:1px solid var(--br);padding-top:8px">
           <button class="cfilter-btn" id="ctf-week" onclick="setCumTime('week')">สัปดาห์นี้</button>
@@ -562,9 +584,10 @@ tr:last-child td{border-bottom:none}
           <button class="cfilter-btn on" id="ctf-period" onclick="setCumTime('period')">งวดนี้</button>
         </div>
         <div style="height:8px"></div>
-        <div class="cwrap" style="height:220px"><canvas id="c-cum"></canvas></div>
+        <div class="cwrap" style="height:200px"><canvas id="c-cum"></canvas></div>
       </div>
-      <!-- จัดการหมวดหมู่ในหน้างบ -->
+
+      <!-- จัดการหมวดหมู่ -->
       <div class="card">
         <div class="ctitle">จัดการหมวดหมู่
           <button class="btn bo bs" onclick="toggleCatMgr('bud')" id="cat-mgr-toggle-bud">▾ จัดการ</button>
@@ -1131,7 +1154,114 @@ function populateBudPeriodSel(year,forceLatest=false){
   else if(cur&&periods.find(p=>p.id===cur))s.value=cur;
   else if(periods.length)s.value=periods[0].id;
 }
-window.onBudPeriodChange=()=>{const y=document.getElementById('bud-year')?.value||'all';populateBudPeriodSel(y);renderBud();};
+// ══ BUDGET YEAR CHART ══════════════════════
+let yrChartMode='both';
+window.setYrChart=(mode,el)=>{
+  yrChartMode=mode;
+  document.querySelectorAll('[id^="yr-btn-"]').forEach(b=>b.classList.remove('on'));
+  el.classList.add('on');
+  renderYrChart();
+};
+function renderYrChart(){
+  destroyC('c-yr-budget');
+  const year=document.getElementById('bud-year')?.value||today().substring(0,4);
+  if(year==='all')return;
+  const {gc,tc}=getCC();
+  const periods=DB.periods.filter(p=>p.year===year).sort((a,b)=>a.id.localeCompare(b.id));
+  if(!periods.length)return;
+  const expCats=DB.cats.filter(c=>c.forType==='expense');
+  const labels=periods.map(p=>`งวด ${p.num||p.id.split('-')[1]}`);
+  const budgetData=periods.map(p=>{
+    const key=p.id;
+    return expCats.reduce((s,c)=>{
+      const v=(DB.budgets[key]&&DB.budgets[key][c.id]!=null)?DB.budgets[key][c.id]:(DB.budgets['all']?.[c.id]||0);
+      return s+v;
+    },0);
+  });
+  const actualData=periods.map(p=>{
+    const txns=DB.txn.filter(t=>t.date>=p.start&&t.date<=p.end&&t.type==='expense');
+    return Math.round(txns.reduce((s,t)=>s+Number(t.amount),0));
+  });
+  const datasets=[];
+  if(yrChartMode==='budget'||yrChartMode==='both'){
+    datasets.push({label:'งบ',data:budgetData,borderColor:'#1a78d0',backgroundColor:'rgba(26,120,208,.08)',fill:yrChartMode==='budget',tension:.3,borderWidth:2,pointRadius:5,pointBackgroundColor:'#1a78d0',borderDash:yrChartMode==='both'?[5,3]:[]});
+  }
+  if(yrChartMode==='actual'||yrChartMode==='both'){
+    datasets.push({label:'ใช้จริง',data:actualData,borderColor:'#e03040',backgroundColor:'rgba(224,48,64,.08)',fill:yrChartMode==='actual',tension:.3,borderWidth:2,pointRadius:5,pointBackgroundColor:'#e03040'});
+  }
+  charts['c-yr-budget']=new Chart(document.getElementById('c-yr-budget'),{
+    type:'line',data:{labels,datasets},
+    options:{responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:true,position:'top',labels:{color:tc,font:{size:11},boxWidth:12}},
+        tooltip:{callbacks:{label:ctx=>`${ctx.dataset.label}: ${fmtM(ctx.raw)}`}}},
+      scales:{
+        x:{grid:{display:false},ticks:{color:tc,font:{size:11}}},
+        y:{grid:{color:gc},ticks:{color:tc,font:{size:10},callback:v=>'฿'+(v>=1000?(v/1000).toFixed(0)+'K':v)}}
+      }
+    }
+  });
+}
+
+// ══ PERIOD SCROLL CARDS ════════════════════
+let curBudPeriodId='';
+function renderPeriodScrollCards(){
+  const scroll=document.getElementById('bud-period-scroll');if(!scroll)return;
+  const year=document.getElementById('bud-year')?.value||today().substring(0,4);
+  const periods=year==='all'?DB.periods:DB.periods.filter(p=>p.year===year);
+  const sorted=periods.sort((a,b)=>a.id.localeCompare(b.id));
+  const todayStr=today();
+  const expCats=DB.cats.filter(c=>c.forType==='expense');
+
+  scroll.innerHTML=sorted.map(p=>{
+    const isToday=todayStr>=p.start&&todayStr<=p.end;
+    const isActive=curBudPeriodId===p.id;
+    const txns=DB.txn.filter(t=>t.date>=p.start&&t.date<=p.end&&t.type==='expense');
+    const spent=Math.round(txns.reduce((s,t)=>s+Number(t.amount),0));
+    const budget=expCats.reduce((s,c)=>{
+      const key=p.id;
+      const v=(DB.budgets[key]&&DB.budgets[key][c.id]!=null)?DB.budgets[key][c.id]:(DB.budgets['all']?.[c.id]||0);
+      return s+v;
+    },0);
+    const pct=budget>0?Math.min(Math.round(spent/budget*100),100):0;
+    const over=budget>0&&spent>budget;
+    const col=over?'var(--rd)':pct>80?'var(--am)':'var(--gn)';
+    return`<div class="period-card ${isActive?'active':''} ${isToday?'today-period':''}" onclick="selectBudPeriod('${p.id}')">
+      <div class="period-card-num">งวด ${p.num||p.id.split('-')[1]} · ${p.year}</div>
+      <div class="period-card-range">${fmtD(p.start)} — ${fmtD(p.end)}</div>
+      ${budget>0?`<div class="period-card-bar"><div class="period-card-fill" style="width:${pct}%;background:${col}"></div></div>`:'<div style="height:6px;margin-bottom:5px"></div>'}
+      <div class="period-card-amt" style="color:${over?'var(--rd)':spent>0?'var(--tx)':'var(--t3)'}">${spent>0?fmtM(spent):'—'}</div>
+      <div class="period-card-bud">${budget>0?`งบ ${fmtM(budget)} · ${over?`เกิน ${pct-100}%`:`${pct}%`}`:'ยังไม่ตั้งงบ'}</div>
+    </div>`;
+  }).join('')+`
+  <div class="period-card-add" onclick="openPeriodMgr()">
+    <div style="font-size:24px;color:var(--t3)">+</div>
+    <div style="font-size:11px;color:var(--t3);font-weight:600;text-align:center">เพิ่มงวด</div>
+  </div>`;
+
+  // scroll ไปที่ active card
+  setTimeout(()=>{
+    const active=scroll.querySelector('.period-card.active');
+    if(active)active.scrollIntoView({behavior:'smooth',block:'nearest',inline:'center'});
+    else{const today=scroll.querySelector('.today-period');if(today)today.scrollIntoView({behavior:'smooth',block:'nearest',inline:'center'});}
+  },100);
+}
+window.selectBudPeriod=(pid)=>{
+  curBudPeriodId=pid;
+  renderPeriodScrollCards();
+  renderBud();
+};
+window.onBudYearChange=()=>{
+  curBudPeriodId='';
+  populateBudYearSel();
+  // auto-select งวดปัจจุบัน
+  const year=document.getElementById('bud-year')?.value||today().substring(0,4);
+  const todayStr=today();
+  const cur=DB.periods.filter(p=>p.year===year).find(p=>todayStr>=p.start&&todayStr<=p.end);
+  if(cur)curBudPeriodId=cur.id;
+  renderYrChart();
+  renderPeriodScrollCards();
+  renderBud();
+};
 function populateCatSel(selId,forType='expense'){
   const s=document.getElementById(selId);if(!s)return;s.innerHTML='';
   DB.cats.filter(c=>c.forType===forType).forEach(c=>{const o=document.createElement('option');o.value=c.id;o.textContent=c.icon+' '+c.name;s.appendChild(o);});
@@ -1248,11 +1378,15 @@ function renderPage(p){
   if(p==='records')renderRecords();
   if(p==='budget'){
     const by=document.getElementById('bud-year');
-    if(by&&(by.value==='all'||!by.value)){
-      const years=[...new Set(DB.periods.map(x=>x.year))].sort().reverse();
-      by.value=years.length?years[0]:today().substring(0,4);
+    const years=[...new Set(DB.periods.map(x=>x.year))].sort().reverse();
+    const nowY=today().substring(0,4);
+    if(by)by.value=years.includes(nowY)?nowY:(years[0]||nowY);
+    // auto-select งวดปัจจุบัน
+    if(!curBudPeriodId){
+      const todayStr=today();
+      const cur=DB.periods.find(p=>todayStr>=p.start&&todayStr<=p.end);
+      curBudPeriodId=cur?.id||DB.periods.sort((a,b)=>b.id.localeCompare(a.id))[0]?.id||'';
     }
-    populateBudPeriodSel(document.getElementById('bud-year')?.value||'all',true);
     renderBud();
   }
   if(p==='dashboard')renderDash();
@@ -1916,8 +2050,8 @@ window.setGT=(t,el)=>{gtType=t;['gt-bar','gt-line'].forEach(id=>document.getElem
 // ══ BUDGET ════════════════════════════════════
 function renderBud(){
   populateSels();
-  const year=document.getElementById('bud-year')?.value||'all';
-  const pid=document.getElementById('bud-period')?.value||'all';
+  const year=document.getElementById('bud-year')?.value||today().substring(0,4);
+  const pid=curBudPeriodId||'all';
   populateBudPeriodSel(year);
   const period=DB.periods.find(p=>p.id===pid)||null;
 
@@ -1930,12 +2064,23 @@ function renderBud(){
     txns=txns.filter(t=>t.date>=bdrp.from&&t.date<=bdrp.to);
     document.getElementById('bud-sub').textContent=`${fmtD(bdrp.from)} — ${fmtD(bdrp.to)}`;
     effectivePeriod={start:bdrp.from,end:bdrp.to};
+  }else if(period){
+    txns=txns.filter(t=>t.date>=period.start&&t.date<=period.end);
+    document.getElementById('bud-sub').textContent=`งวด ${pid} · ${fmtD(period.start)} — ${fmtD(period.end)}`;
+  }else if(year!=='all'){
+    txns=txns.filter(t=>getY(t.date)===year);
+    document.getElementById('bud-sub').textContent=`ปี ${year} · ทุกงวด`;
   }else{
-    if(period)txns=txns.filter(t=>t.date>=period.start&&t.date<=period.end);
-    else if(year!=='all')txns=txns.filter(t=>getY(t.date)===year);
-    document.getElementById('bud-sub').textContent=pid!=='all'?`งวด ${pid}`:year!=='all'?`ปี ${year}`:'ทุกช่วงเวลา';
+    document.getElementById('bud-sub').textContent='ทุกช่วงเวลา';
   }
-  updateDRPLabel('budget');
+
+  // แสดง label งวดใน cumulative section
+  const cumLbl=document.getElementById('cum-period-label');
+  if(cumLbl)cumLbl.textContent=effectivePeriod?`${fmtD(effectivePeriod.start)} — ${fmtD(effectivePeriod.end)}`:'';
+
+  // render scroll cards + year chart
+  renderPeriodScrollCards();
+  renderYrChart();
 
   const exp=txns.filter(t=>t.type==='expense');
   const inc=txns.filter(t=>t.type==='income');
