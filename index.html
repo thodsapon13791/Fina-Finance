@@ -666,8 +666,29 @@ tr:last-child td{border-bottom:none}
 
     <!-- ═══ BALANCE ════════════════════════════ -->
     <div id="page-balance" class="page">
-      <div class="phdr"><div><div class="ptitle">งบดุล</div></div><button class="btn bp bs" onclick="openAssetModal()">+ เพิ่มรายการ</button></div>
+      <div class="phdr">
+        <div><div class="ptitle">งบดุล</div></div>
+        <div class="row" style="gap:6px">
+          <button class="btn bo bs" onclick="saveNWSnapshot()">📸 Snapshot</button>
+          <button class="btn bp bs" onclick="openAssetModal()">+ เพิ่มรายการ</button>
+        </div>
+      </div>
       <div id="bs-banner"></div>
+      <!-- Net Worth History -->
+      <div class="card">
+        <div class="ctitle">แนวโน้ม Net Worth
+          <div style="display:flex;gap:5px">
+            <button class="cfilter-btn on" id="nw-btn-nw" onclick="setNWChart('nw',this)">Net Worth</button>
+            <button class="cfilter-btn" id="nw-btn-all" onclick="setNWChart('all',this)">ทั้งหมด</button>
+          </div>
+        </div>
+        <div id="nw-history-empty" style="display:none;text-align:center;padding:20px;color:var(--t3);font-size:13px;line-height:1.8">
+          ยังไม่มีข้อมูลย้อนหลัง<br>
+          <span style="font-size:12px">กด 📸 Snapshot เพื่อเริ่มบันทึก</span>
+        </div>
+        <div class="cwrap" style="height:220px"><canvas id="c-nw-history"></canvas></div>
+        <div id="nw-history-list" style="margin-top:10px;display:flex;flex-direction:column;gap:6px"></div>
+      </div>
       <div class="card">
         <div class="ctitle">สินทรัพย์ <small id="ta-l"></small></div>
         <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px" id="af-asset">
@@ -910,7 +931,7 @@ const drpState={
   budget:{from:'',to:'',calYear:new Date().getFullYear(),calMonth:new Date().getMonth(),selecting:0}
 };
 let curEmojiCat='อาหาร';
-let DB={txn:[],budgets:{},assets:[],cats:[],groups:[],presets:[],periods:[],goals:{},settings:{}};
+let DB={txn:[],budgets:{},assets:[],cats:[],groups:[],presets:[],periods:[],goals:{},settings:{},nwHistory:[]};
 
 // ══ DEFAULTS ══════════════════════════════════
 const DEFAULT_GROUPS=[
@@ -1317,6 +1338,8 @@ onAuthStateChanged(auth,async user=>{
     document.getElementById('ud-email').textContent=user.email||'—';
     updateDRPLabel('records');updateDRPLabel('dashboard');updateDRPLabel('budget');
     renderPage('add');
+    // ตรวจ auto-snapshot หลัง login
+    setTimeout(()=>checkAutoSnapshot(),2000);
   }else{currentUser=null;showScreen('login');}
 });
 function showScreen(s){
@@ -1345,6 +1368,7 @@ async function loadData(){
     if(d.id==='periods')DB.periods=data.list||[];
     if(d.id==='goals')DB.goals=data||{};
     if(d.id==='settings')DB.settings=data||{};
+    if(d.id==='nwHistory')DB.nwHistory=data.list||[];
   });
   unsubs.forEach(u=>u());unsubs=[];
   const q=query(collection(db,`users/${uid}/transactions`),orderBy('date','desc'));
@@ -2522,6 +2546,7 @@ window.exportPDF=()=>{
 
 // ══ BALANCE ═══════════════════════════════════
 function renderBalance(){
+  renderNWHistoryChart();
   const assets=DB.assets.filter(a=>!ASSET_TYPES[a.type]?.isL);
   const liabs=DB.assets.filter(a=>ASSET_TYPES[a.type]?.isL);
   const tA=assets.reduce((s,a)=>s+Number(a.value),0);
@@ -2575,7 +2600,150 @@ function renderBalance(){
     options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>`${ctx.dataset.label}: ${fmtM(ctx.raw)}`}}},
       scales:{x:{grid:{display:false},ticks:{color:tc,font:{size:9},maxRotation:30}},y:{grid:{color:gc},ticks:{color:tc,font:{size:10},callback:v=>'฿'+(v>=1000?(v/1000).toFixed(0)+'K':v)}}}}});
 }
-window.renderBalance=renderBalance;
+// ══ NET WORTH HISTORY ════════════════════════
+let nwChartMode='nw';
+window.setNWChart=(mode,el)=>{
+  nwChartMode=mode;
+  document.querySelectorAll('[id^="nw-btn-"]').forEach(b=>b.classList.remove('on'));
+  el.classList.add('on');
+  renderNWHistoryChart();
+};
+
+window.saveNWSnapshot=async()=>{
+  const tA=DB.assets.filter(a=>!ASSET_TYPES[a.type]?.isL).reduce((s,a)=>s+Number(a.value),0);
+  const tL=DB.assets.filter(a=>ASSET_TYPES[a.type]?.isL).reduce((s,a)=>s+Number(a.value),0);
+  const nw=tA-tL;
+  if(!tA&&!tL){toast('⚠️ ยังไม่มีข้อมูลสินทรัพย์/หนี้สิน');return;}
+  const year=today().substring(0,4);
+  const existing=DB.nwHistory?.find(h=>h.year===year);
+  const msg=existing
+    ?`อัปเดต Snapshot ปี ${year}?\n\nสินทรัพย์: ${fmtM(tA)}\nหนี้สิน: ${fmtM(tL)}\nNet Worth: ${fmtM(nw)}`
+    :`บันทึก Snapshot ปี ${year}?\n\nสินทรัพย์: ${fmtM(tA)}\nหนี้สิน: ${fmtM(tL)}\nNet Worth: ${fmtM(nw)}`;
+  if(!confirm(msg))return;
+  if(!DB.nwHistory)DB.nwHistory=[];
+  const idx=DB.nwHistory.findIndex(h=>h.year===year);
+  const snap={year,assets:tA,liabilities:tL,netWorth:nw,date:today()};
+  if(idx>=0)DB.nwHistory[idx]=snap;
+  else DB.nwHistory.push(snap);
+  DB.nwHistory.sort((a,b)=>a.year.localeCompare(b.year));
+  await saveSetting('nwHistory',{list:DB.nwHistory});
+  renderNWHistoryChart();
+  toast(`✅ บันทึก Snapshot ปี ${year} แล้ว`);
+};
+
+function renderNWHistoryChart(){
+  destroyC('c-nw-history');
+  const history=DB.nwHistory||[];
+  const emptyEl=document.getElementById('nw-history-empty');
+  const canvas=document.getElementById('c-nw-history');
+  if(!history.length){
+    if(emptyEl)emptyEl.style.display='block';
+    if(canvas)canvas.style.display='none';
+    document.getElementById('nw-history-list').innerHTML='';
+    return;
+  }
+  if(emptyEl)emptyEl.style.display='none';
+  if(canvas)canvas.style.display='block';
+  const {gc,tc}=getCC();
+  const labels=history.map(h=>h.year);
+  const datasets=[];
+  if(nwChartMode==='nw'||nwChartMode==='all'){
+    datasets.push({
+      label:'Net Worth',
+      data:history.map(h=>Math.round(h.netWorth)),
+      borderColor:'#5b52f0',
+      backgroundColor:'rgba(91,82,240,.15)',
+      fill:true,tension:.4,borderWidth:2.5,
+      pointRadius:6,pointBackgroundColor:'#5b52f0',pointBorderColor:'var(--sf)',pointBorderWidth:2,
+    });
+  }
+  if(nwChartMode==='all'){
+    datasets.push({
+      label:'สินทรัพย์',
+      data:history.map(h=>Math.round(h.assets)),
+      borderColor:'#00a070',
+      backgroundColor:'rgba(0,160,112,.08)',
+      fill:true,tension:.4,borderWidth:2,
+      pointRadius:5,pointBackgroundColor:'#00a070',pointBorderColor:'var(--sf)',pointBorderWidth:2,
+    });
+    datasets.push({
+      label:'หนี้สิน',
+      data:history.map(h=>Math.round(h.liabilities)),
+      borderColor:'#e03040',
+      backgroundColor:'rgba(224,48,64,.08)',
+      fill:true,tension:.4,borderWidth:2,
+      pointRadius:5,pointBackgroundColor:'#e03040',pointBorderColor:'var(--sf)',pointBorderWidth:2,
+    });
+  }
+  charts['c-nw-history']=new Chart(canvas,{
+    type:'line',data:{labels,datasets},
+    options:{
+      responsive:true,maintainAspectRatio:false,
+      interaction:{mode:'index',intersect:false},
+      plugins:{
+        legend:{display:true,position:'top',labels:{color:tc,font:{size:11},boxWidth:12,padding:12}},
+        tooltip:{callbacks:{label:ctx=>`${ctx.dataset.label}: ${fmtM(ctx.raw)}`}}
+      },
+      scales:{
+        x:{grid:{display:false},ticks:{color:tc,font:{size:11}}},
+        y:{grid:{color:gc},ticks:{color:tc,font:{size:10},callback:v=>{
+          if(Math.abs(v)>=1000000)return'฿'+(v/1000000).toFixed(1)+'M';
+          if(Math.abs(v)>=1000)return'฿'+(v/1000).toFixed(0)+'K';
+          return'฿'+v;
+        }}}
+      }
+    }
+  });
+
+  // History list — แสดงแต่ละปีพร้อม diff
+  const list=document.getElementById('nw-history-list');
+  if(!list)return;
+  list.innerHTML=`<div style="font-size:11px;font-weight:700;color:var(--t2);text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px">ประวัติรายปี</div>`
+  +[...history].reverse().map((h,i,arr)=>{
+    const prev=arr[i+1];
+    const diff=prev?h.netWorth-prev.netWorth:null;
+    const diffPct=prev&&prev.netWorth!==0?Math.round((h.netWorth-prev.netWorth)/Math.abs(prev.netWorth)*100):null;
+    const isPos=diff>=0;
+    return`<div style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--s2);border-radius:var(--rl);border:1px solid var(--br)">
+      <div style="width:48px;height:48px;border-radius:12px;background:var(--a3);display:flex;align-items:center;justify-content:center;flex-shrink:0">
+        <span style="font-size:13px;font-weight:800;color:var(--ac)">${h.year}</span>
+      </div>
+      <div style="flex:1;min-width:0">
+        <div style="font-size:13px;font-weight:700;color:var(--tx)">Net Worth ${fmtM(h.netWorth)}</div>
+        <div style="font-size:11px;color:var(--t2);margin-top:2px">สินทรัพย์ ${fmtM(h.assets)} · หนี้สิน ${fmtM(h.liabilities)}</div>
+      </div>
+      ${diff!==null?`<div style="text-align:right;flex-shrink:0">
+        <div style="font-size:13px;font-weight:700;color:${isPos?'var(--gn)':'var(--rd)'}">${isPos?'+':''}${fmtM(diff)}</div>
+        <div style="font-size:10px;color:${isPos?'var(--gn)':'var(--rd)'};">${isPos?'▲':'▼'} ${Math.abs(diffPct)}%</div>
+      </div>`:'<div style="font-size:10px;color:var(--t3)">ปีแรก</div>'}
+      <button class="btn bd bs bic" onclick="deleteNWSnapshot('${h.year}')" style="flex-shrink:0">🗑</button>
+    </div>`;
+  }).join('');
+}
+
+window.deleteNWSnapshot=async(year)=>{
+  if(!confirm(`ลบ Snapshot ปี ${year}?`))return;
+  DB.nwHistory=(DB.nwHistory||[]).filter(h=>h.year!==year);
+  await saveSetting('nwHistory',{list:DB.nwHistory});
+  renderNWHistoryChart();toast('ลบ Snapshot แล้ว');
+};
+
+// ตรวจสอบ auto-snapshot เมื่อ login
+async function checkAutoSnapshot(){
+  const prevYear=String(new Date().getFullYear()-1);
+  if(!(DB.nwHistory||[]).find(h=>h.year===prevYear)){
+    const tA=DB.assets.filter(a=>!ASSET_TYPES[a.type]?.isL).reduce((s,a)=>s+Number(a.value),0);
+    const tL=DB.assets.filter(a=>ASSET_TYPES[a.type]?.isL).reduce((s,a)=>s+Number(a.value),0);
+    if(!tA&&!tL)return;
+    if(confirm(`📸 ยังไม่มี Snapshot ปี ${prevYear}\nต้องการบันทึกข้อมูลปัจจุบันเป็น Snapshot ปี ${prevYear} ไหม?\n\nสินทรัพย์: ${fmtM(tA)}\nหนี้สิน: ${fmtM(tL)}\nNet Worth: ${fmtM(tA-tL)}`)){
+      if(!DB.nwHistory)DB.nwHistory=[];
+      DB.nwHistory.push({year:prevYear,assets:tA,liabilities:tL,netWorth:tA-tL,date:today()});
+      DB.nwHistory.sort((a,b)=>a.year.localeCompare(b.year));
+      await saveSetting('nwHistory',{list:DB.nwHistory});
+      toast(`✅ บันทึก Snapshot ปี ${prevYear} แล้ว`);
+    }
+  }
+}
 window.setAF=(type,el,which)=>{
   if(which==='asset')afAsset=type;else afLiab=type;
   document.querySelectorAll('#af-'+which+' .afbtn').forEach(b=>b.classList.remove('on'));
