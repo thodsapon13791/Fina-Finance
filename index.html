@@ -669,26 +669,11 @@ tr:last-child td{border-bottom:none}
       <div class="phdr">
         <div><div class="ptitle">งบดุล</div></div>
         <div class="row" style="gap:6px">
-          <button class="btn bo bs" onclick="saveNWSnapshot()">📸 Snapshot</button>
+          <button class="btn bo bs" onclick="saveNWSnapshot()">+ บันทึกย้อนหลัง</button>
           <button class="btn bp bs" onclick="openAssetModal()">+ เพิ่มรายการ</button>
         </div>
       </div>
       <div id="bs-banner"></div>
-      <!-- Net Worth History -->
-      <div class="card">
-        <div class="ctitle">แนวโน้ม Net Worth
-          <div style="display:flex;gap:5px">
-            <button class="cfilter-btn on" id="nw-btn-nw" onclick="setNWChart('nw',this)">Net Worth</button>
-            <button class="cfilter-btn" id="nw-btn-all" onclick="setNWChart('all',this)">ทั้งหมด</button>
-          </div>
-        </div>
-        <div id="nw-history-empty" style="display:none;text-align:center;padding:20px;color:var(--t3);font-size:13px;line-height:1.8">
-          ยังไม่มีข้อมูลย้อนหลัง<br>
-          <span style="font-size:12px">กด 📸 Snapshot เพื่อเริ่มบันทึก</span>
-        </div>
-        <div class="cwrap" style="height:220px"><canvas id="c-nw-history"></canvas></div>
-        <div id="nw-history-list" style="margin-top:10px;display:flex;flex-direction:column;gap:6px"></div>
-      </div>
       <div class="card">
         <div class="ctitle">สินทรัพย์ <small id="ta-l"></small></div>
         <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px" id="af-asset">
@@ -715,6 +700,21 @@ tr:last-child td{border-bottom:none}
         <div class="ctitle">สินทรัพย์ vs หนี้สิน</div>
         <div class="cwrap" style="height:200px"><canvas id="c-bs"></canvas></div>
         <div class="legend-wrap" id="bs-legend"></div>
+      </div>
+      <!-- Net Worth History -->
+      <div class="card">
+        <div class="ctitle">บันทึกทรัพย์สินย้อนหลัง
+          <div style="display:flex;gap:5px">
+            <button class="cfilter-btn on" id="nw-btn-nw" onclick="setNWChart('nw',this)">Net Worth</button>
+            <button class="cfilter-btn" id="nw-btn-all" onclick="setNWChart('all',this)">ทั้งหมด</button>
+          </div>
+        </div>
+        <div id="nw-history-empty" style="display:none;text-align:center;padding:20px;color:var(--t3);font-size:13px;line-height:1.8">
+          ยังไม่มีข้อมูลย้อนหลัง<br>
+          <span style="font-size:12px">กด + บันทึกย้อนหลัง เพื่อเริ่มบันทึก</span>
+        </div>
+        <div class="cwrap" style="height:220px"><canvas id="c-nw-history"></canvas></div>
+        <div id="nw-history-list" style="margin-top:10px;display:flex;flex-direction:column;gap:6px"></div>
       </div>
     </div>
 
@@ -1338,8 +1338,6 @@ onAuthStateChanged(auth,async user=>{
     document.getElementById('ud-email').textContent=user.email||'—';
     updateDRPLabel('records');updateDRPLabel('dashboard');updateDRPLabel('budget');
     renderPage('add');
-    // ตรวจ auto-snapshot หลัง login
-    setTimeout(()=>checkAutoSnapshot(),2000);
   }else{currentUser=null;showScreen('login');}
 });
 function showScreen(s){
@@ -2617,7 +2615,7 @@ window.saveNWSnapshot=async()=>{
   const year=today().substring(0,4);
   const existing=DB.nwHistory?.find(h=>h.year===year);
   const msg=existing
-    ?`อัปเดต Snapshot ปี ${year}?\n\nสินทรัพย์: ${fmtM(tA)}\nหนี้สิน: ${fmtM(tL)}\nNet Worth: ${fmtM(nw)}`
+    ?`อัปเดตข้อมูลทรัพย์สินปี ${year}?\n\nสินทรัพย์: ${fmtM(tA)}\nหนี้สิน: ${fmtM(tL)}\nNet Worth: ${fmtM(nw)}`
     :`บันทึก Snapshot ปี ${year}?\n\nสินทรัพย์: ${fmtM(tA)}\nหนี้สิน: ${fmtM(tL)}\nNet Worth: ${fmtM(nw)}`;
   if(!confirm(msg))return;
   if(!DB.nwHistory)DB.nwHistory=[];
@@ -2628,7 +2626,7 @@ window.saveNWSnapshot=async()=>{
   DB.nwHistory.sort((a,b)=>a.year.localeCompare(b.year));
   await saveSetting('nwHistory',{list:DB.nwHistory});
   renderNWHistoryChart();
-  toast(`✅ บันทึก Snapshot ปี ${year} แล้ว`);
+  toast(`✅ บันทึกทรัพย์สินปี ${year} แล้ว`);
 };
 
 function renderNWHistoryChart(){
@@ -2722,13 +2720,13 @@ function renderNWHistoryChart(){
 }
 
 window.deleteNWSnapshot=async(year)=>{
-  if(!confirm(`ลบ Snapshot ปี ${year}?`))return;
+  if(!confirm(`ลบข้อมูลทรัพย์สินปี ${year}?`))return;
   DB.nwHistory=(DB.nwHistory||[]).filter(h=>h.year!==year);
   await saveSetting('nwHistory',{list:DB.nwHistory});
-  renderNWHistoryChart();toast('ลบ Snapshot แล้ว');
+  renderNWHistoryChart();toast('ลบข้อมูลแล้ว');
 };
 
-// ตรวจสอบ auto-snapshot เมื่อ login
+// ตรวจสอบบันทึกทรัพย์สินย้อนหลัง
 async function checkAutoSnapshot(){
   const prevYear=String(new Date().getFullYear()-1);
   if(!(DB.nwHistory||[]).find(h=>h.year===prevYear)){
@@ -2740,7 +2738,7 @@ async function checkAutoSnapshot(){
       DB.nwHistory.push({year:prevYear,assets:tA,liabilities:tL,netWorth:tA-tL,date:today()});
       DB.nwHistory.sort((a,b)=>a.year.localeCompare(b.year));
       await saveSetting('nwHistory',{list:DB.nwHistory});
-      toast(`✅ บันทึก Snapshot ปี ${prevYear} แล้ว`);
+      toast(`✅ บันทึกทรัพย์สินปี ${prevYear} แล้ว`);
     }
   }
 }
