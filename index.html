@@ -10,7 +10,7 @@
   --bg:#f4f6fb;--sf:#ffffff;--s2:#f0f2f9;--s3:#e4e8f5;
   --br:rgba(80,80,200,.09);--br2:rgba(80,80,200,.20);
   --tx:#1a1a2e;--t2:#5a5a8a;--t3:#9999bb;
-  --ac:#5b52f0;--a2:#4a42d0;--a3:rgba(91,82,240,.10);
+  --ac:#0d9488;--a2:#0f766e;--a3:rgba(13,148,136,.10);
   --gn:#00a070;--gn2:rgba(0,160,112,.10);
   --rd:#e03040;--rd2:rgba(224,48,64,.10);
   --am:#cc8800;--am2:rgba(204,136,0,.10);
@@ -23,7 +23,7 @@
   --bg:#0c0c18;--sf:#12121f;--s2:#1a1a2e;--s3:#22223a;
   --br:rgba(120,120,255,.10);--br2:rgba(120,120,255,.22);
   --tx:#e8e8f8;--t2:#8888aa;--t3:#44445a;
-  --ac:#6c63ff;--a2:#a89cff;--a3:rgba(108,99,255,.12);
+  --ac:#14b8a6;--a2:#5eead4;--a3:rgba(20,184,166,.12);
   --gn:#00e5a0;--gn2:rgba(0,229,160,.10);
   --rd:#ff5f6d;--rd2:rgba(255,95,109,.10);
   --am:#ffb347;--am2:rgba(255,179,71,.10);
@@ -37,8 +37,8 @@ html,body{height:100%;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','N
 
 /* LOGIN */
 #login-page{display:flex;align-items:center;justify-content:center;min-height:100vh;padding:20px;
-  background:linear-gradient(135deg,#5b52f0 0%,#a89cff 50%,#f4f6fb 100%)}
-[data-theme="dark"] #login-page{background:linear-gradient(135deg,#1a1a2e 0%,#2a2a4e 50%,#0c0c18 100%)}
+  background:linear-gradient(135deg,#0d9488 0%,#5eead4 55%,#f0fdfa 100%)}
+[data-theme="dark"] #login-page{background:linear-gradient(135deg,#042f2e 0%,#134e4a 50%,#0c0c18 100%)}
 .login-card{background:var(--sf);border-radius:var(--rxl);padding:40px 32px;width:100%;max-width:380px;text-align:center;box-shadow:var(--shadow2)}
 .login-logo{font-size:52px;margin-bottom:8px}
 .login-title{font-size:28px;font-weight:800;color:var(--ac);letter-spacing:-.5px;margin-bottom:4px}
@@ -2029,7 +2029,7 @@ function renderDash(){
     data:{labels:mL,datasets:[
       {label:'รายรับ',data:months.map(mo=>{const[y,m]=mo.split('-');return Math.round(filterTxn(`${y}-${m}-01`,`${y}-${m}-31`,'all','income').reduce((s,t)=>s+Number(t.amount),0));}),borderColor:'#00a070',backgroundColor:gtType==='line'?'rgba(0,160,112,.08)':'rgba(0,160,112,.65)',fill:gtType==='line',tension:.4,pointRadius:3,borderWidth:2},
       {label:'รายจ่าย',data:months.map(mo=>{const[y,m]=mo.split('-');return Math.round(filterTxn(`${y}-${m}-01`,`${y}-${m}-31`,'all','expense').reduce((s,t)=>s+Number(t.amount),0));}),borderColor:'#e03040',backgroundColor:gtType==='line'?'rgba(224,48,64,.08)':'rgba(224,48,64,.65)',fill:gtType==='line',tension:.4,pointRadius:3,borderWidth:2},
-      {label:'ออม',data:months.map(mo=>{const[y,m]=mo.split('-');return Math.round(filterTxn(`${y}-${m}-01`,`${y}-${m}-31`,'all','saving').reduce((s,t)=>s+Number(t.amount),0));}),borderColor:'#5b52f0',backgroundColor:gtType==='line'?'rgba(91,82,240,.08)':'rgba(91,82,240,.65)',fill:gtType==='line',tension:.4,pointRadius:3,borderWidth:2},
+      {label:'ออม',data:months.map(mo=>{const[y,m]=mo.split('-');return Math.round(filterTxn(`${y}-${m}-01`,`${y}-${m}-31`,'all','saving').reduce((s,t)=>s+Number(t.amount),0));}),borderColor:'#0d9488',backgroundColor:gtType==='line'?'rgba(13,148,136,.08)':'rgba(13,148,136,.65)',fill:gtType==='line',tension:.4,pointRadius:3,borderWidth:2},
     ]},
     options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{grid:{color:gc},ticks:{color:tc,font:{size:10}}},y:{grid:{color:gc},ticks:{color:tc,font:{size:10},callback:v=>'฿'+(v>=1000?(v/1000).toFixed(0)+'K':v)}}}}
   });
@@ -2058,7 +2058,7 @@ function renderDash(){
   destroyC('c-freq');const t8=top.slice(0,8);
   if(t8.length)charts['c-freq']=new Chart(document.getElementById('c-freq'),{type:'bar',data:{labels:t8.map(([id])=>getCat(id).icon+' '+getCat(id).name),datasets:[{data:t8.map(([id])=>cC[id]||0),backgroundColor:t8.map(([id])=>getCat(id).color),borderWidth:0}]},options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{grid:{color:gc},ticks:{color:tc,font:{size:10}}},y:{grid:{display:false},ticks:{color:tc,font:{size:10}}}}}});
   const dow=[0,0,0,0,0,0,0],dowC=[0,0,0,0,0,0,0];exp.forEach(t=>{const d=new Date(t.date+'T00:00:00').getDay();dow[d]+=Number(t.amount);dowC[d]++;});
-  destroyC('c-dow');charts['c-dow']=new Chart(document.getElementById('c-dow'),{type:'bar',data:{labels:['อา','จ','อ','พ','พฤ','ศ','ส'],datasets:[{data:dow.map(v=>Math.round(v)),backgroundColor:dow.map((_,i)=>i===5||i===6?'rgba(224,48,64,.7)':'rgba(91,82,240,.6)'),borderWidth:0}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>`฿${ctx.raw.toLocaleString()} (${dowC[ctx.dataIndex]}ครั้ง)`}}},scales:{x:{grid:{display:false},ticks:{color:tc,font:{size:11}}},y:{grid:{color:gc},ticks:{color:tc,font:{size:10},callback:v=>'฿'+(v>=1000?(v/1000).toFixed(0)+'K':v)}}}}});
+  destroyC('c-dow');charts['c-dow']=new Chart(document.getElementById('c-dow'),{type:'bar',data:{labels:['อา','จ','อ','พ','พฤ','ศ','ส'],datasets:[{data:dow.map(v=>Math.round(v)),backgroundColor:dow.map((_,i)=>i===5||i===6?'rgba(224,48,64,.7)':'rgba(13,148,136,.6)'),borderWidth:0}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>`฿${ctx.raw.toLocaleString()} (${dowC[ctx.dataIndex]}ครั้ง)`}}},scales:{x:{grid:{display:false},ticks:{color:tc,font:{size:11}}},y:{grid:{color:gc},ticks:{color:tc,font:{size:10},callback:v=>'฿'+(v>=1000?(v/1000).toFixed(0)+'K':v)}}}}});
   const days=new Set(exp.map(t=>t.date)).size;
   const behIns=[];
   if(alc>0)behIns.push(`<div class="alert ar">🍺 เบียร์/เหล้า ${fmtM(alc)} — ${cC['alcohol']||0}ครั้ง</div>`);
@@ -2502,8 +2502,8 @@ window.exportPDF=()=>{
 
   const html=`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Fina Finance</title>
   <style>body{font-family:-apple-system,sans-serif;color:#1a1a2e;max-width:600px;margin:0 auto;padding:32px 24px}
-  .hdr{text-align:center;margin-bottom:28px;padding-bottom:20px;border-bottom:2px solid #5b52f0}
-  .logo{font-size:32px}.title{font-size:22px;font-weight:800;color:#5b52f0;margin-bottom:4px}
+  .hdr{text-align:center;margin-bottom:28px;padding-bottom:20px;border-bottom:2px solid #0d9488}
+  .logo{font-size:32px}.title{font-size:22px;font-weight:800;color:#0d9488;margin-bottom:4px}
   .period{font-size:13px;color:#888}.gen{font-size:11px;color:#aaa;margin-top:4px}
   .sec{margin-bottom:24px}.sec-t{font-size:12px;font-weight:700;color:#888;text-transform:uppercase;letter-spacing:.07em;margin-bottom:10px;padding-bottom:4px;border-bottom:1px solid #eee}
   table{width:100%;border-collapse:collapse}
@@ -2511,8 +2511,8 @@ window.exportPDF=()=>{
   .chart-row{display:flex;align-items:center;gap:24px;margin-bottom:8px}
   .chart-wrap{flex-shrink:0;text-align:center}
   .chart-legend{flex:1}
-  .mr.tot td{border-top:2px solid #5b52f0;border-bottom:none;font-weight:700;font-size:15px;padding-top:12px}
-  .gn{color:#00a070}.rd{color:#e03040}.pr{color:#5b52f0}.rt{text-align:right}.mu{color:#888}
+  .mr.tot td{border-top:2px solid #0d9488;border-bottom:none;font-weight:700;font-size:15px;padding-top:12px}
+  .gn{color:#00a070}.rd{color:#e03040}.pr{color:#0d9488}.rt{text-align:right}.mu{color:#888}
   .ftr{text-align:center;margin-top:32px;font-size:11px;color:#ccc;padding-top:16px;border-top:1px solid #eee}
   @media print{button{display:none}}</style></head><body>
   <div class="hdr"><div class="logo">💰</div><div class="title">Fina Finance</div>
@@ -2649,10 +2649,10 @@ function renderNWHistoryChart(){
     datasets.push({
       label:'Net Worth',
       data:history.map(h=>Math.round(h.netWorth)),
-      borderColor:'#5b52f0',
-      backgroundColor:'rgba(91,82,240,.15)',
+      borderColor:'#0d9488',
+      backgroundColor:'rgba(13,148,136,.15)',
       fill:true,tension:.4,borderWidth:2.5,
-      pointRadius:6,pointBackgroundColor:'#5b52f0',pointBorderColor:'var(--sf)',pointBorderWidth:2,
+      pointRadius:6,pointBackgroundColor:'#0d9488',pointBorderColor:'var(--sf)',pointBorderWidth:2,
     });
   }
   if(nwChartMode==='all'){
