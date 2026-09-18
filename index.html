@@ -37,8 +37,8 @@ html,body{height:100%;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','N
 
 /* LOGIN */
 #login-page{display:flex;align-items:center;justify-content:center;min-height:100vh;padding:20px;
-  background:linear-gradient(145deg,#0f4c5c 0%,#0d9488 35%,#14b8a6 60%,#5eead4 85%,#ccfbf1 100%)}
-[data-theme="dark"] #login-page{background:linear-gradient(145deg,#021b1a 0%,#042f2e 35%,#0d4f4a 65%,#0f766e 100%)}
+  background:linear-gradient(145deg,#0c2a6e 0%,#1565c0 30%,#1e88e5 55%,#64b5f6 80%,#e3f2fd 100%)}
+[data-theme="dark"] #login-page{background:linear-gradient(145deg,#050d1a 0%,#0a1929 35%,#0d2d5e 65%,#1565c0 100%)}
 .login-card{background:var(--sf);border-radius:var(--rxl);padding:40px 32px;width:100%;max-width:380px;text-align:center;box-shadow:var(--shadow2)}
 .login-logo{font-size:52px;margin-bottom:8px}
 .login-title{font-size:28px;font-weight:800;color:var(--ac);letter-spacing:-.5px;margin-bottom:4px}
@@ -668,10 +668,7 @@ tr:last-child td{border-bottom:none}
     <div id="page-balance" class="page">
       <div class="phdr">
         <div><div class="ptitle">งบดุล</div></div>
-        <div class="row" style="gap:6px">
-          <button class="btn bo bs" onclick="saveNWSnapshot()">+ บันทึกย้อนหลัง</button>
-          <button class="btn bp bs" onclick="openAssetModal()">+ เพิ่มรายการ</button>
-        </div>
+        <button class="btn bp bs" onclick="openAssetModal()">+ เพิ่มรายการ</button>
       </div>
       <div id="bs-banner"></div>
       <div class="card">
@@ -709,12 +706,17 @@ tr:last-child td{border-bottom:none}
             <button class="cfilter-btn" id="nw-btn-all" onclick="setNWChart('all',this)">ทั้งหมด</button>
           </div>
         </div>
-        <div id="nw-history-empty" style="display:none;text-align:center;padding:20px;color:var(--t3);font-size:13px;line-height:1.8">
-          ยังไม่มีข้อมูลย้อนหลัง<br>
-          <span style="font-size:12px">กด + บันทึกย้อนหลัง เพื่อเริ่มบันทึก</span>
+        <div id="nw-history-empty" style="display:none;text-align:center;padding:28px 16px">
+          <div style="font-size:40px;margin-bottom:10px">📈</div>
+          <div style="font-size:14px;font-weight:700;color:var(--t2);margin-bottom:6px">ยังไม่มีข้อมูลย้อนหลัง</div>
+          <div style="font-size:12px;color:var(--t3);margin-bottom:16px;line-height:1.6">บันทึกทรัพย์สินทุกปี<br>เพื่อดูว่าคุณรวยขึ้นแค่ไหน</div>
+          <button class="btn bp bs" onclick="openNWModal()" style="margin:0 auto">+ บันทึกปีนี้</button>
         </div>
         <div class="cwrap" style="height:220px"><canvas id="c-nw-history"></canvas></div>
         <div id="nw-history-list" style="margin-top:10px;display:flex;flex-direction:column;gap:6px"></div>
+        <div style="padding-top:12px;border-top:1px solid var(--br);margin-top:4px">
+          <button class="btn bp" onclick="openNWModal()" style="width:100%;justify-content:center;padding:11px">+ บันทึกข้อมูลทรัพย์สินปีนี้</button>
+        </div>
       </div>
     </div>
 
@@ -891,6 +893,48 @@ tr:last-child td{border-bottom:none}
           <div class="fg" style="margin-bottom:0"><label>วันสิ้นสุด</label><input type="date" id="pmgr-end" style="font-size:14px;padding:10px 12px"></div>
         </div>
         <button class="btn bp" style="width:100%;justify-content:center;padding:12px" onclick="submitPeriodMgr()">💾 สร้างงวด</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: Net Worth Snapshot -->
+  <div class="mover" id="modal-nw">
+    <div class="mdl" style="max-width:400px">
+      <div class="mhandle"></div>
+      <div class="mtitle">
+        <span>📈 บันทึกทรัพย์สินรายปี</span>
+        <button class="btn bo bs bic" onclick="closeModal('modal-nw')">✕</button>
+      </div>
+      <div class="alert ab" style="margin-bottom:14px">บันทึกมูลค่าทรัพย์สินสุทธิของคุณในแต่ละปี เพื่อดูความมั่งคั่งที่เพิ่มขึ้นเมื่อเวลาผ่านไป</div>
+      <div class="fg">
+        <label>ปี พ.ศ. / ค.ศ.</label>
+        <select id="nw-year" style="font-size:14px;padding:10px 12px"></select>
+      </div>
+      <div style="background:var(--s2);border-radius:var(--rl);padding:14px;margin-bottom:14px">
+        <div style="font-size:11px;font-weight:700;color:var(--t2);text-transform:uppercase;letter-spacing:.05em;margin-bottom:10px">ดึงจากข้อมูลปัจจุบัน</div>
+        <div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--br);font-size:13px">
+          <span class="tm">สินทรัพย์รวม</span>
+          <span class="tg fw7" id="nw-modal-assets">—</span>
+        </div>
+        <div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--br);font-size:13px">
+          <span class="tm">หนี้สินรวม</span>
+          <span class="tr fw7" id="nw-modal-liab">—</span>
+        </div>
+        <div style="display:flex;justify-content:space-between;padding:8px 0;font-size:15px;font-weight:800">
+          <span>Net Worth</span>
+          <span id="nw-modal-nw" class="tg">—</span>
+        </div>
+      </div>
+      <div style="margin-bottom:14px">
+        <div style="font-size:11px;font-weight:700;color:var(--t2);text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px">หรือกรอกเองสำหรับปีย้อนหลัง</div>
+        <div class="frow">
+          <div class="fg" style="margin-bottom:0"><label>สินทรัพย์ (บาท)</label><input type="number" id="nw-input-assets" placeholder="0" inputmode="decimal" style="font-size:14px;padding:10px 12px"></div>
+          <div class="fg" style="margin-bottom:0"><label>หนี้สิน (บาท)</label><input type="number" id="nw-input-liab" placeholder="0" inputmode="decimal" style="font-size:14px;padding:10px 12px"></div>
+        </div>
+      </div>
+      <div class="row" style="gap:9px">
+        <button class="btn bp" style="flex:1;justify-content:center;padding:12px" onclick="confirmNWSnapshot()">💾 บันทึก</button>
+        <button class="btn bo" onclick="closeModal('modal-nw')">ยกเลิก</button>
       </div>
     </div>
   </div>
@@ -2607,7 +2651,47 @@ window.setNWChart=(mode,el)=>{
   renderNWHistoryChart();
 };
 
-window.saveNWSnapshot=async()=>{
+window.openNWModal=()=>{
+  const tA=DB.assets.filter(a=>!ASSET_TYPES[a.type]?.isL).reduce((s,a)=>s+Number(a.value),0);
+  const tL=DB.assets.filter(a=>ASSET_TYPES[a.type]?.isL).reduce((s,a)=>s+Number(a.value),0);
+  const nw=tA-tL;
+  // populate year dropdown
+  const sel=document.getElementById('nw-year');
+  if(sel){
+    const curY=new Date().getFullYear();
+    sel.innerHTML='';
+    for(let y=curY;y>=curY-10;y--){
+      const o=document.createElement('option');o.value=y;o.textContent=`${y} (พ.ศ. ${y+543})`;sel.appendChild(o);
+    }
+    sel.value=curY;
+  }
+  // show current values
+  document.getElementById('nw-modal-assets').textContent=fmtM(tA);
+  document.getElementById('nw-modal-liab').textContent=fmtM(tL);
+  const nwEl=document.getElementById('nw-modal-nw');
+  if(nwEl){nwEl.textContent=fmtM(nw);nwEl.className=nw>=0?'tg fw7':'tr fw7';}
+  // pre-fill inputs with current data
+  document.getElementById('nw-input-assets').value=tA||'';
+  document.getElementById('nw-input-liab').value=tL||'';
+  openModal('modal-nw');
+};
+window.confirmNWSnapshot=async()=>{
+  const year=String(document.getElementById('nw-year')?.value||new Date().getFullYear());
+  const assets=parseFloat(document.getElementById('nw-input-assets')?.value)||0;
+  const liab=parseFloat(document.getElementById('nw-input-liab')?.value)||0;
+  const nw=assets-liab;
+  if(!assets&&!liab){toast('⚠️ กรอกมูลค่าสินทรัพย์อย่างน้อย 1 รายการ');return;}
+  if(!DB.nwHistory)DB.nwHistory=[];
+  const idx=DB.nwHistory.findIndex(h=>h.year===year);
+  const snap={year,assets,liabilities:liab,netWorth:nw,date:today()};
+  if(idx>=0)DB.nwHistory[idx]=snap;
+  else DB.nwHistory.push(snap);
+  DB.nwHistory.sort((a,b)=>a.year.localeCompare(b.year));
+  await saveSetting('nwHistory',{list:DB.nwHistory});
+  closeModal('modal-nw');
+  renderNWHistoryChart();
+  toast(`✅ บันทึกทรัพย์สินปี ${year} แล้ว`);
+};
   const tA=DB.assets.filter(a=>!ASSET_TYPES[a.type]?.isL).reduce((s,a)=>s+Number(a.value),0);
   const tL=DB.assets.filter(a=>ASSET_TYPES[a.type]?.isL).reduce((s,a)=>s+Number(a.value),0);
   const nw=tA-tL;
