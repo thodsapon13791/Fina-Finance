@@ -359,8 +359,11 @@ tr:last-child td{border-bottom:none}
 <div class="loading-screen" id="loading-screen">
   <div class="loading-logo">💰</div>
   <div class="loading-title">Fina Finance</div>
-  <div class="loading-sub">Personal Finance · กำลังโหลด...</div>
+  <div class="loading-sub" id="loading-sub-text">กำลังโหลดข้อมูล...</div>
   <div class="spin"></div>
+  <div id="loading-retry" style="display:none;margin-top:20px">
+    <button onclick="location.reload()" style="background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.3);color:#fff;padding:10px 24px;border-radius:30px;font-size:14px;cursor:pointer;font-family:inherit">🔄 โหลดใหม่</button>
+  </div>
 </div>
 
 <!-- LOGIN -->
@@ -1375,11 +1378,35 @@ document.addEventListener('DOMContentLoaded',()=>{
 });
 
 // ══ AUTH STATE ════════════════════════════════
+// Fallback: ถ้า Firebase ไม่ตอบใน 8 วินาที ให้ไปหน้า login
+const authFallback=setTimeout(()=>{
+  if(document.getElementById('loading-screen').style.display!=='none'){
+    showScreen('login');
+    console.warn('Firebase auth timeout — showing login');
+  }
+},8000);
+
 onAuthStateChanged(auth,async user=>{
+  clearTimeout(authFallback);
   if(user){
     currentUser=user;showScreen('loading');
+    // timeout 12 วินาที — แสดงปุ่ม retry
+    const loadTimeout=setTimeout(()=>{
+      const sub=document.getElementById('loading-sub-text');
+      const retry=document.getElementById('loading-retry');
+      if(sub)sub.textContent='โหลดช้าเกินไป กรุณาเช็คอินเทอร์เน็ต';
+      if(retry)retry.style.display='block';
+    },12000);
+    // countdown text
+    let t=3;const ti=setInterval(()=>{
+      const sub=document.getElementById('loading-sub-text');
+      if(t<=0){clearInterval(ti);return;}
+      if(sub&&sub.textContent.includes('กำลัง'))sub.textContent=`กำลังโหลดข้อมูล...`;
+      t--;
+    },1000);
     try{
       await loadData();
+      clearTimeout(loadTimeout);clearInterval(ti);
       showScreen('app');
       const av=document.getElementById('user-avatar'),ph=document.getElementById('user-placeholder');
       if(user.photoURL){av.src=user.photoURL;av.style.display='block';ph.style.display='none';}
@@ -1389,6 +1416,7 @@ onAuthStateChanged(auth,async user=>{
       updateDRPLabel('records');updateDRPLabel('dashboard');updateDRPLabel('budget');
       renderPage('add');
     }catch(e){
+      clearTimeout(loadTimeout);clearInterval(ti);
       console.error('loadData error:',e);
       showScreen('login');
       toast('❌ โหลดข้อมูลไม่สำเร็จ กรุณาลองใหม่');
@@ -1396,9 +1424,12 @@ onAuthStateChanged(auth,async user=>{
   }else{currentUser=null;showScreen('login');}
 });
 function showScreen(s){
-  document.getElementById('loading-screen').style.display=s==='loading'?'flex':'none';
-  document.getElementById('login-page').style.display=s==='login'?'flex':'none';
-  document.getElementById('app').style.display=s==='app'?'block':'none';
+  const loading=document.getElementById('loading-screen');
+  const login=document.getElementById('login-page');
+  const app=document.getElementById('app');
+  if(loading)loading.style.display=s==='loading'?'flex':'none';
+  if(login)login.style.display=s==='login'?'flex':'none';
+  if(app)app.style.display=s==='app'?'block':'none';
 }
 
 // ══ FIRESTORE ═════════════════════════════════
@@ -2700,26 +2731,6 @@ window.confirmNWSnapshot=async()=>{
   DB.nwHistory.sort((a,b)=>a.year.localeCompare(b.year));
   await saveSetting('nwHistory',{list:DB.nwHistory});
   closeModal('modal-nw');
-  renderNWHistoryChart();
-  toast(`✅ บันทึกทรัพย์สินปี ${year} แล้ว`);
-};
-  const tA=DB.assets.filter(a=>!ASSET_TYPES[a.type]?.isL).reduce((s,a)=>s+Number(a.value),0);
-  const tL=DB.assets.filter(a=>ASSET_TYPES[a.type]?.isL).reduce((s,a)=>s+Number(a.value),0);
-  const nw=tA-tL;
-  if(!tA&&!tL){toast('⚠️ ยังไม่มีข้อมูลสินทรัพย์/หนี้สิน');return;}
-  const year=today().substring(0,4);
-  const existing=DB.nwHistory?.find(h=>h.year===year);
-  const msg=existing
-    ?`อัปเดตข้อมูลทรัพย์สินปี ${year}?\n\nสินทรัพย์: ${fmtM(tA)}\nหนี้สิน: ${fmtM(tL)}\nNet Worth: ${fmtM(nw)}`
-    :`บันทึก Snapshot ปี ${year}?\n\nสินทรัพย์: ${fmtM(tA)}\nหนี้สิน: ${fmtM(tL)}\nNet Worth: ${fmtM(nw)}`;
-  if(!confirm(msg))return;
-  if(!DB.nwHistory)DB.nwHistory=[];
-  const idx=DB.nwHistory.findIndex(h=>h.year===year);
-  const snap={year,assets:tA,liabilities:tL,netWorth:nw,date:today()};
-  if(idx>=0)DB.nwHistory[idx]=snap;
-  else DB.nwHistory.push(snap);
-  DB.nwHistory.sort((a,b)=>a.year.localeCompare(b.year));
-  await saveSetting('nwHistory',{list:DB.nwHistory});
   renderNWHistoryChart();
   toast(`✅ บันทึกทรัพย์สินปี ${year} แล้ว`);
 };
