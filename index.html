@@ -4,6 +4,15 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>Fina Finance</title>
+<meta name="description" content="บันทึกรายรับรายจ่าย วิเคราะห์พฤติกรรมการเงิน">
+<meta name="theme-color" content="#1565c0">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Fina Finance">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="icon" type="image/png" sizes="32x32" href="favicon-32x32.png">
+<link rel="icon" type="image/x-icon" href="favicon.ico">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
 <style>
 :root{
@@ -2872,6 +2881,14 @@ window.submitAsset=async()=>{
   await saveSetting('assets',{list:DB.assets});closeModal('modal-asset');renderBalance();toast('✅ บันทึกแล้ว');
 };
 
+// ══ SERVICE WORKER ════════════════════════════
+if('serviceWorker' in navigator){
+  window.addEventListener('load',()=>{
+    navigator.serviceWorker.register('sw.js')
+      .then(r=>console.log('SW registered:',r.scope))
+      .catch(e=>console.warn('SW failed:',e));
+  });
+}
 </script>
 </body>
 </html>
