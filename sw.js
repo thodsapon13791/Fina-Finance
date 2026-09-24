@@ -1,7 +1,7 @@
 const CACHE_NAME = 'fina-finance-v1';
 const ASSETS = [
-  '/Fian-Finance/',
-  '/Fian-Finance/index.html',
+  '/Fina-Finance/',
+  '/Fina-Finance/index.html',
   'https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js'
 ];
 
